@@ -18,6 +18,8 @@
 - Preserve original prompt line numbers without attaching them to JSON file lines.
 - Prevent report outputs from overwriting prompt inputs or project configuration.
 - Make the external runner's literal-text fixture consistent across line endings.
+- Report cyclic project, prompt, and output symlinks as input errors without an
+  unexpected traceback.
 
 ### Changed
 

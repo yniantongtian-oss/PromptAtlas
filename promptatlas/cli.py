@@ -5,10 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 
 from . import __version__
-from ._io import atomic_write
+from ._io import atomic_write, resolve_path
 from .atlas import AtlasStore
 from .diff import diff_specs, diff_summary, diff_to_dict
 from .eval_export import DEFAULT_PROVIDER, export_eval_cases
@@ -208,10 +207,10 @@ def _cmd_check(args: argparse.Namespace) -> int:
         document = sarif_report(report) if args.format == "sarif" else report.to_dict()
         text = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
     if args.out:
-        target = Path(args.out).resolve()
+        target = resolve_path(args.out)
         inputs = {
             report.config.path,
-            *((report.config.root / file.path).resolve() for file in report.files),
+            *(resolve_path(report.config.root / file.path) for file in report.files),
         }
         if target in inputs:
             raise ValueError(

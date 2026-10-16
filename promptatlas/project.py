@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
+from ._io import resolve_path
 from .lint import Finding, lint_spec
 from .load import load_prompt, read_text
 from .schema import VALID_COMPONENT_KINDS
@@ -40,7 +41,7 @@ def _path(value: object) -> str:
 
 
 def _resolve(root: Path, relative: str) -> Path:
-    path = (root / relative).resolve()
+    path = resolve_path(root / relative)
     if not path.is_relative_to(root):
         raise ValueError(f"prompt path resolves outside the project: {relative!r}")
     return path
@@ -69,7 +70,7 @@ class ProjectConfig:
     prompts: tuple[PromptContract, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "path", Path(self.path).resolve())
+        object.__setattr__(self, "path", resolve_path(self.path))
         if (
             not isinstance(self.prompts, tuple)
             or not self.prompts
@@ -90,7 +91,7 @@ class ProjectConfig:
 
 def load_project(path: str | Path = "promptatlas.json") -> ProjectConfig:
     """Validate a JSON project file; listed files are relative to its directory."""
-    path = Path(path).resolve()
+    path = resolve_path(path)
     data = json.loads(read_text(path))
     if not isinstance(data, dict):
         raise ValueError("project configuration must be a JSON object")

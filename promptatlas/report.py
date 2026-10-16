@@ -6,6 +6,7 @@ import hashlib
 import json
 
 from . import __version__
+from ._io import resolve_path
 from .project import ProjectReport
 
 _RULES = (
@@ -43,7 +44,7 @@ def sarif_report(report: ProjectReport) -> dict:
     indices = {item["id"]: index for index, item in enumerate(rules)}
     results, notifications = [], []
     for file in report.files:
-        location = {"uri": (report.config.root / file.path).resolve().as_uri()}
+        location = {"uri": resolve_path(report.config.root / file.path).as_uri()}
         if file.error is not None:
             notifications.append(
                 {
