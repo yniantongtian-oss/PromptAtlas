@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "promptatlas"
+version = "0.1.0"
+description = "A structured, queryable atlas of AI system prompts: parse, diff, generate, and regression-test production system prompts."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "PromptAtlas contributors" }]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["system-prompt", "prompt-engineering", "llm", "promptfoo", "evals"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+promptatlas = "promptatlas.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["promptatlas*"]
