@@ -1,75 +1,96 @@
-"""Component-level diff between two prompt versions."""
+"""Case-sensitive component comparisons that preserve duplicate rules."""
 
 from __future__ import annotations
 
-import difflib
+from difflib import SequenceMatcher
+
+from .schema import Component, PromptSpec
 
 
-def _norm(s: str) -> str:
-    return " ".join(s.split()).lower()
+def _key(component: Component) -> tuple[str, str]:
+    # Case is meaningful for identifiers. Whitespace-only edits are ignored.
+    return component.kind, " ".join(component.content.split())
 
 
-def diff_specs(spec_a, spec_b):
-    """Compare two PromptSpecs at component level.
+def diff_specs(spec_a: PromptSpec, spec_b: PromptSpec) -> dict:
+    """Return disjoint added, removed, and changed groups.
 
-    Returns a dict:
-      added      : components only in B
-      removed    : components only in A
-      changed    : list of (old, new) pairs with similarity in (0.3, 0.95)
-      similarity : global content similarity 0..1
+    Exact matching consumes duplicate occurrences one at a time. Remaining
+    same-kind pairs are matched greedily by descending lexical similarity
+    (>= 0.6). Similarity measures ordered exact matches, not model behavior.
+    Reordering is reported separately even when content is otherwise equal.
     """
-    a_items = {_norm(c.content): c for c in spec_a.components}
-    b_items = {_norm(c.content): c for c in spec_b.components}
-
-    a_keys = list(a_items)
-    b_keys = list(b_items)
-    a_set, b_set = set(a_keys), set(b_keys)
-
-    added = [b_items[k] for k in b_keys if k not in a_set]
-    removed = [a_items[k] for k in a_keys if k not in b_set]
-
-    matcher = difflib.SequenceMatcher(a=a_keys, b=b_keys, autojunk=False)
-    similarity = matcher.ratio()
-
-    changed = []
-    unmatched_a = [k for k in a_keys if k not in b_set]
-    unmatched_b = [k for k in b_keys if k not in a_set]
-    used_b = set()
-    for ka in unmatched_a:
-        best, best_ratio = None, 0.0
-        for kb in unmatched_b:
-            if kb in used_b:
+    a, b = spec_a.components, spec_b.components
+    a_keys, b_keys = [_key(item) for item in a], [_key(item) for item in b]
+    available: dict[tuple[str, str], list[int]] = {}
+    for j, key in enumerate(b_keys):
+        available.setdefault(key, []).append(j)
+    matched_a, matched_b = set(), set()
+    exact_pairs = []
+    for i, key in enumerate(a_keys):
+        if available.get(key):
+            j = available[key].pop(0)
+            matched_a.add(i)
+            matched_b.add(j)
+            exact_pairs.append((i, j))
+    candidates = []
+    for i, old in enumerate(a):
+        if i in matched_a:
+            continue
+        for j, new in enumerate(b):
+            if j in matched_b or old.kind != new.kind:
                 continue
-            r = difflib.SequenceMatcher(a=ka, b=kb).ratio()
-            if r > best_ratio:
-                best, best_ratio = kb, r
-        if best and 0.3 < best_ratio < 0.95:
-            changed.append((a_items[ka], b_items[best]))
-            used_b.add(best)
-
+            ratio = SequenceMatcher(None, a_keys[i][1], b_keys[j][1], autojunk=False).ratio()
+            if ratio >= 0.6:
+                candidates.append((-ratio, i, j))
+    changed_pairs = []
+    for _, i, j in sorted(candidates):
+        if i not in matched_a and j not in matched_b:
+            matched_a.add(i)
+            matched_b.add(j)
+            changed_pairs.append((i, j))
+    ordered_targets = [j for _, j in exact_pairs]
+    reordered = ordered_targets != sorted(ordered_targets)
     return {
-        "added": added,
-        "removed": removed,
-        "changed": changed,
-        "similarity": round(similarity, 4),
+        "added": [item for j, item in enumerate(b) if j not in matched_b],
+        "removed": [item for i, item in enumerate(a) if i not in matched_a],
+        "changed": [(a[i], b[j]) for i, j in sorted(changed_pairs)],
+        "similarity": round(SequenceMatcher(None, a_keys, b_keys, autojunk=False).ratio(), 4),
+        "reordered": reordered,
+        "has_changes": a_keys != b_keys,
         "a_version": spec_a.version,
         "b_version": spec_b.version,
+    }
+
+
+def diff_to_dict(result: dict) -> dict:
+    """Make a diff JSON serializable without losing component metadata."""
+    return {
+        **{
+            key: value
+            for key, value in result.items()
+            if key not in {"added", "removed", "changed"}
+        },
+        "added": [item.to_dict() for item in result["added"]],
+        "removed": [item.to_dict() for item in result["removed"]],
+        "changed": [{"old": old.to_dict(), "new": new.to_dict()} for old, new in result["changed"]],
     }
 
 
 def diff_summary(result: dict) -> str:
     lines = [
         f"# Prompt diff: {result['a_version'] or 'A'} -> {result['b_version'] or 'B'}",
-        f"Similarity: {result['similarity']:.1%}",
-        "",
-        f"## Added ({len(result['added'])})",
+        f"Ordered component similarity: {result['similarity']:.1%}",
+        f"Reordered: {'yes' if result['reordered'] else 'no'}",
     ]
-    for c in result["added"]:
-        lines.append(f"- [{c.kind}] {c.content[:120]}")
-    lines += [f"", f"## Removed ({len(result['removed'])})"]
-    for c in result["removed"]:
-        lines.append(f"- [{c.kind}] {c.content[:120]}")
-    lines += [f"", f"## Changed ({len(result['changed'])})"]
+    for key, label in (("added", "Added"), ("removed", "Removed")):
+        lines.extend(["", f"## {label} ({len(result[key])})"])
+        lines.extend(
+            f"- [{item.kind}] {' '.join(item.content.split())[:160]}" for item in result[key]
+        )
+    lines.extend(["", f"## Changed ({len(result['changed'])})"])
     for old, new in result["changed"]:
-        lines.append(f"- [{old.kind}] {old.content[:80]}  -->  {new.content[:80]}")
+        lines.append(
+            f"- [{old.kind}] {' '.join(old.content.split())[:120]} -> {' '.join(new.content.split())[:120]}"
+        )
     return "\n".join(lines)

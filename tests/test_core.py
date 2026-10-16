@@ -1,19 +1,24 @@
 import unittest
 from pathlib import Path
 
-from promptatlas import (AtlasStore, Component, diff_specs, export_eval_cases,
-                         generate_prompt, parse_prompt)
+from promptatlas import (
+    AtlasStore,
+    Component,
+    diff_specs,
+    export_eval_cases,
+    generate_prompt,
+    parse_prompt,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 V1 = ROOT / "atlas/versions/example-agent_v1.md"
 V2 = ROOT / "atlas/versions/example-agent_v2.md"
-ATLAS = ROOT / "atlas/components.jsonl"
+ATLAS = ROOT / "promptatlas/data/components.jsonl"
 
 
 class TestParse(unittest.TestCase):
     def test_parse_classifies_core_kinds(self):
-        spec = parse_prompt(V1.read_text(encoding="utf-8"),
-                            product="example-agent", version="v1")
+        spec = parse_prompt(V1.read_text(encoding="utf-8"), product="example-agent", version="v1")
         kinds = {c.kind for c in spec.components}
         self.assertIn("role", kinds)
         self.assertIn("guardrail", kinds)
@@ -51,14 +56,14 @@ class TestGenerate(unittest.TestCase):
     def test_generate_contains_sections(self):
         store = AtlasStore(ATLAS)
         text = generate_prompt("a customer support agent", store=store)
-        for section in ("# Role", "# Guardrails", "# Stop Conditions",
-                        "# Output Rules"):
+        for section in ("# Role", "# Guardrails", "# Stop Conditions", "# Output Rules"):
             self.assertIn(section, text)
 
 
 class TestEvalExport(unittest.TestCase):
     def test_export_valid_config(self):
         import json
+
         text = export_eval_cases("test scenario", output_path="")
         doc = json.loads(text)
         self.assertIn("tests", doc)

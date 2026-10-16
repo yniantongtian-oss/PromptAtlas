@@ -1,0 +1,7 @@
+include LICENSE README.md CONTRIBUTING.md CHANGELOG.md
+recursive-include promptatlas/data *.jsonl
+recursive-include atlas *.md
+recursive-include docs *.md *.json
+recursive-include examples *.py *.md *.json *.cjs
+recursive-include tests *.py
+recursive-include scripts *.py *.cjs

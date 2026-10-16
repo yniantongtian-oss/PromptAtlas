@@ -6,3 +6,11 @@ build/
 .pytest_cache/
 promptfoo-eval.json
 examples/promptfoo-eval.json
+.venv/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+test-results/
+.promptfoo/
+*.tmp

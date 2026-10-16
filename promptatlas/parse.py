@@ -1,99 +1,215 @@
-"""Heuristic parser that structures a raw system prompt into Components.
+"""Deterministic English-oriented parsing with source spans and opaque blocks.
 
-The parser is deterministic and dependency-free. It recognises:
-  - role           : leading "You are ..." statements / first paragraph
-  - guardrail      : sentences containing negated imperatives
-                     (never, do not, must not, refuse, don't)
-  - output_rule    : sentences about response format / language / length
-  - stop_condition : sentences about stopping, waiting, handing off, asking
-  - tool           : JSON function schemas and <tool>-like blocks
-  - few_shot       : example dialogue blocks (User:/Assistant: patterns)
-  - context        : environment facts (paths, dates, runtime)
-  - instruction    : everything else that is a directive
+Classification is a heuristic, not a safety verdict. Code, examples, and tool
+schemas remain intact so their contents cannot become duplicate directives.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 
 from .schema import Component, PromptSpec
 
-_NEGATION = re.compile(r"\b(never|do not|don't|must not|should not|avoid|refuse|"
-                       r"do not|cannot|can't)\b", re.I)
-_OUTPUT = re.compile(r"\b(output format|respond with|respond in|always (use|respond)|"
-                     r"json format|markdown|in (english|chinese|the user'?s language)|"
-                     r"concise|without (preamble|explanation))\b", re.I)
-_STOP = re.compile(r"\b(stop|wait for|ask the user|hand off|escalate|"
-                   r"if you (are unsure|cannot)|do not proceed|check with)\b", re.I)
-_CONTEXT = re.compile(r"^\s*(environment|system info|working directory|"
-                      r"current (date|time|dir)|platform|os[:=])", re.I | re.M)
-_ROLE = re.compile(r"^\s*you are\b", re.I)
-_TOOL_SCHEMA = re.compile(r'"type"\s*:\s*"function"')
-_DIRECTIVE = re.compile(r"^(always|only|use|when|before|after|first|then|if|"
-                        r"for each|make sure|ensure)\b", re.I)
+_NEGATION = re.compile(
+    r"\b(never|do not|don't|must not|should not|avoid|refuse|cannot|can't)\b", re.I
+)
+_OUTPUT = re.compile(
+    r"\b(output format|respond with|respond in|always (?:use|respond)|return (?:valid )?json|"
+    r"json format|markdown|in (?:english|chinese|the user'?s language)|"
+    r"concise|without (?:preamble|explanation))\b",
+    re.I,
+)
+_STOP = re.compile(
+    r"\b(stop|wait for|ask (?:the user|one clarifying)|hand off|escalate|"
+    r"if you (?:are unsure|cannot)|do not proceed|check with)\b",
+    re.I,
+)
+_CONTEXT = re.compile(
+    r"^(?:environment|system info|working directory|current (?:date|time|dir)|platform|os[:=])",
+    re.I,
+)
+_ROLE = re.compile(r"^(?:you are|your role is|act as)\b", re.I)
+_DIRECTIVE = re.compile(
+    r"^(?:always|only|use|when|before|after|first|then|if|for each|make sure|ensure|verify|keep)\b",
+    re.I,
+)
+_FENCE = re.compile(r"^\s*(`{3,}|~{3,})([^\r\n]*)\s*$")
+_EXAMPLE = re.compile(r"^\s*(?:#{1,6}\s*)?(?:example(?:\s+\d+)?|few[- ]shot)(?:\s*[:#]?\s*)$", re.I)
+_DIALOGUE = re.compile(r"^\s*(?:User|Assistant|Human|System)\s*:", re.I)
+_SECTIONS = {
+    "role": "role",
+    "persona": "role",
+    "mission": "role",
+    "instructions": "instruction",
+    "instruction": "instruction",
+    "behavior": "instruction",
+    "tools": "tool",
+    "tool definitions": "tool",
+    "guardrails": "guardrail",
+    "safety": "guardrail",
+    "constraints": "guardrail",
+    "output": "output_rule",
+    "output rules": "output_rule",
+    "response format": "output_rule",
+    "stop conditions": "stop_condition",
+    "handoff": "stop_condition",
+    "context": "context",
+    "environment": "context",
+    "examples": "few_shot",
+    "few shot examples": "few_shot",
+}
 
 
-def _sentences(text: str) -> list:
-    parts = re.split(r"(?<=[.!?\n])\s+", text)
-    return [p.strip() for p in parts if p.strip()]
+def _heading(line: str) -> tuple[bool, str | None]:
+    match = re.match(r"^\s*#{1,6}\s+(.+?)\s*#*\s*$", line)
+    if not match:
+        return False, None
+    key = re.sub(r"[^a-z0-9 ]", " ", match[1].casefold())
+    return True, _SECTIONS.get(" ".join(key.split()))
 
 
-def _classify_sentence(sent: str) -> str:
-    if _NEGATION.search(sent):
-        return "guardrail"
-    if _STOP.search(sent):
+def _is_tool(value: object) -> bool:
+    if isinstance(value, list):
+        return bool(value) and all(_is_tool(item) for item in value)
+    if not isinstance(value, dict):
+        return False
+    if value.get("type") == "function" or ("name" in value and "parameters" in value):
+        return True
+    return isinstance(value.get("tools"), list) and _is_tool(value["tools"])
+
+
+def _classify(text: str, section: str | None) -> str:
+    if section and section != "instruction":
+        return section
+    if _ROLE.match(text):
+        return "role"
+    if _CONTEXT.match(text):
+        return "context"
+    if _STOP.search(text):
         return "stop_condition"
-    if _OUTPUT.search(sent):
+    if _NEGATION.search(text):
+        return "guardrail"
+    if _OUTPUT.search(text):
         return "output_rule"
-    if _DIRECTIVE.match(sent):
+    if section == "instruction" or _DIRECTIVE.match(text):
         return "instruction"
     return "context"
 
 
 def parse_prompt(raw: str, product: str = "", version: str = "") -> PromptSpec:
-    """Structure a raw system prompt into a PromptSpec."""
+    """Parse without network calls; equal inputs produce equal serialized specs.
+
+    Offsets point into the unchanged input, including CRLF and Unicode. IDs
+    include kind, content, and occurrence index, so repeated rules stay distinct.
+    """
     spec = PromptSpec(raw=raw, product=product, version=version)
-    text = raw.strip()
-    components = []
+    lines = raw.splitlines(keepends=True)
+    offsets = []
+    offset = 0
+    for line in lines:
+        offsets.append(offset)
+        offset += len(line)
+    occurrences: dict[tuple[str, str], int] = {}
 
-    # 1. Extract tool JSON blocks first so they aren't mangled.
-    tool_blocks = []
-    for m in re.finditer(r"```(?:json)?\s*\n(.*?)```", text, re.S):
-        block = m.group(1)
-        if _TOOL_SCHEMA.search(block):
-            try:
-                json.loads(block)
-                tool_blocks.append((m.start(), m.end(), block))
-            except json.JSONDecodeError:
-                pass
-    for start, end, block in sorted(tool_blocks, reverse=True):
-        components.append(Component(
-            kind="tool", content=block, product=product, version=version,
-            confidence=0.95))
-        text = text[:start] + " " + text[end:]
+    def append(kind: str, start: int, end: int, confidence: float) -> None:
+        chunk = raw[start:end]
+        start += len(chunk) - len(chunk.lstrip())
+        end -= len(chunk) - len(chunk.rstrip())
+        if start >= end:
+            return
+        content = raw[start:end]
+        key = (kind, content)
+        occurrence = occurrences.get(key, 0)
+        occurrences[key] = occurrence + 1
+        identity = json.dumps([kind, content, occurrence], ensure_ascii=False)
+        spec.components.append(
+            Component(
+                kind=kind,
+                content=content,
+                product=product,
+                version=version,
+                id=hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16],
+                confidence=confidence,
+                start=start,
+                end=end,
+            )
+        )
 
-    # 2. Extract few-shot example blocks.
-    for m in re.finditer(r"(Example \d+|Few-shot)[: ]*\n(.*?)(?=\n\n|\Z)",
-                         text, re.S | re.I):
-        components.append(Component(
-            kind="few_shot", content=m.group(2).strip(), product=product,
-            version=version, confidence=0.8))
-
-    # 3. Remaining text -> sentences, classified by heuristics.
-    sents = _sentences(text)
-    for i, sent in enumerate(sents):
-        if not sent:
+    section = None
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip():
+            i += 1
             continue
-        if i == 0 and _ROLE.search(sent):
-            kind = "role"
-        elif _CONTEXT.search(sent):
+        fence = _FENCE.match(line)
+        if fence:
+            j = i + 1
+            closing = re.compile(
+                r"^\s*" + re.escape(fence[1][0]) + "{" + str(len(fence[1])) + r",}\s*$"
+            )
+            while j < len(lines) and not closing.match(lines[j]):
+                j += 1
+            body_end = j
+            j = min(j + 1, len(lines))
             kind = "context"
-        else:
-            kind = _classify_sentence(sent)
-        components.append(Component(kind=kind, content=sent,
-                                    product=product, version=version,
-                                    confidence=0.7 if kind != "role" else 0.9))
-
-    spec.components = components
+            try:
+                if _is_tool(json.loads("".join(lines[i + 1 : body_end]))):
+                    kind = "tool"
+            except (ValueError, TypeError):
+                pass
+            append(
+                kind,
+                offsets[i],
+                offsets[j] if j < len(lines) else len(raw),
+                0.95 if kind == "tool" else 0.7,
+            )
+            i = j
+            continue
+        # XML-style tool blocks are data, never evaluated or executed.
+        tool_tag = re.match(r"^\s*<(tools?|tool_schema)(?:\s[^>]*)?>", line, re.I)
+        if tool_tag:
+            j = i
+            closing_tag = re.compile(r"</" + tool_tag[1] + r"\s*>", re.I)
+            while j < len(lines) and not closing_tag.search(lines[j]):
+                j += 1
+            j = min(j + 1, len(lines))
+            append("tool", offsets[i], offsets[j] if j < len(lines) else len(raw), 0.9)
+            i = j
+            continue
+        is_heading, heading_kind = _heading(line)
+        if is_heading and not _EXAMPLE.match(line):
+            section = heading_kind
+            i += 1
+            continue
+        if _EXAMPLE.match(line) or _DIALOGUE.match(line) or (section == "few_shot"):
+            j = i + 1
+            while j < len(lines):
+                if _heading(lines[j])[0] or _EXAMPLE.match(lines[j]):
+                    break
+                if not lines[j].strip():
+                    k = j + 1
+                    while k < len(lines) and not lines[k].strip():
+                        k += 1
+                    if k >= len(lines) or not _DIALOGUE.match(lines[k]):
+                        break
+                j += 1
+            append("few_shot", offsets[i], offsets[j] if j < len(lines) else len(raw), 0.8)
+            i = j
+            continue
+        prefix = re.match(r"\s*(?:(?:[-*+]|\d+[.)])\s+)?", line)
+        start = offsets[i] + prefix.end()
+        end = offsets[i] + len(line.rstrip())
+        text = raw[start:end]
+        position = 0
+        for boundary in list(re.finditer(r"(?<=[.!?])\s+(?=[A-Z])", text)) + [None]:
+            finish = boundary.start() if boundary else len(text)
+            content = text[position:finish]
+            if content.strip():
+                kind = _classify(content, section)
+                append(kind, start + position, start + finish, 0.9 if kind == "role" else 0.7)
+            position = boundary.end() if boundary else len(text)
+        i += 1
     return spec

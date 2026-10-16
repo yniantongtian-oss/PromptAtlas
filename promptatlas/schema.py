@@ -1,102 +1,151 @@
-"""Core data structures for PromptAtlas."""
+"""Validated, serializable data structures for prompt components."""
 
 from __future__ import annotations
 
 import json
+import math
 import re
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from ._io import atomic_write
+
 VALID_COMPONENT_KINDS = (
-    "role",          # persona / mission statement
-    "instruction",   # behavioral directive
-    "tool",          # tool / function definition
-    "guardrail",     # safety / refusal / boundary rule
-    "output_rule",   # response format / language / length constraint
-    "stop_condition",# when to stop / hand off / ask user
-    "few_shot",      # example exchanges
-    "context",       # environment / runtime facts
+    "role",
+    "instruction",
+    "tool",
+    "guardrail",
+    "output_rule",
+    "stop_condition",
+    "few_shot",
+    "context",
     "other",
 )
-
-_slug_re = re.compile(r"[^a-z0-9]+")
-
-
-def _slugify(text: str) -> str:
-    return _slug_re.sub("-", text.lower()).strip("-")[:64] or uuid.uuid4().hex[:8]
+SCHEMA_VERSION = 1
 
 
 @dataclass
 class Component:
-    """A single structured component extracted from a system prompt."""
+    """One prompt component; offsets are Unicode character indices, end exclusive."""
 
     kind: str
     content: str
     product: str = ""
     version: str = ""
-    tags: list = field(default_factory=list)
-    source: str = ""           # where this was observed (e.g. public repo URL)
-    confidence: float = 1.0    # heuristic parser confidence 0..1
-    id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    tags: list[str] = field(default_factory=list)
+    source: str = ""
+    confidence: float = 1.0
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
+    start: int | None = None
+    end: int | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.kind not in VALID_COMPONENT_KINDS:
-            raise ValueError(
-                f"invalid component kind {self.kind!r}; "
-                f"valid kinds: {VALID_COMPONENT_KINDS}"
-            )
+            raise ValueError(f"invalid component kind {self.kind!r}")
+        if not isinstance(self.content, str) or not self.content.strip():
+            raise ValueError("component content must be a non-empty string")
         self.content = self.content.strip()
+        for name in ("product", "version", "source", "id"):
+            if not isinstance(getattr(self, name), str):
+                raise ValueError(f"component {name} must be a string")
+        if not self.id.strip():
+            raise ValueError("component id must not be empty")
+        if not isinstance(self.tags, list) or any(
+            not isinstance(tag, str) or not tag.strip() for tag in self.tags
+        ):
+            raise ValueError("component tags must be a list of non-empty strings")
+        if (
+            isinstance(self.confidence, bool)
+            or not isinstance(self.confidence, (int, float))
+            or not math.isfinite(self.confidence)
+            or not 0 <= self.confidence <= 1
+        ):
+            raise ValueError("component confidence must be a finite number from 0 to 1")
+        if self.start is not None or self.end is not None:
+            if (
+                type(self.start) is not int
+                or type(self.end) is not int
+                or self.start < 0
+                or self.end <= self.start
+            ):
+                raise ValueError("component offsets must satisfy 0 <= start < end")
 
     @property
     def slug(self) -> str:
-        return _slugify(self.content.splitlines()[0] if self.content else self.id)
+        """Return a short display slug without changing component identity."""
+        return (
+            re.sub(r"[^a-z0-9]+", "-", self.content.splitlines()[0].lower()).strip("-")[:64]
+            or self.id
+        )
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Component":
-        return cls(**data)
+    def from_dict(cls, data: dict) -> Component:
+        if not isinstance(data, dict):
+            raise ValueError("component must be a JSON object")
+        try:
+            return cls(**data)
+        except TypeError as exc:
+            raise ValueError(f"invalid component fields: {exc}") from exc
 
 
 @dataclass
 class PromptSpec:
-    """A fully structured system prompt."""
+    """Original prompt text and its ordered components."""
 
     raw: str
     product: str = ""
     version: str = ""
-    components: list = field(default_factory=list)
+    components: list[Component] = field(default_factory=list)
 
-    def by_kind(self, kind: str) -> list:
-        return [c for c in self.components if c.kind == kind]
+    def __post_init__(self) -> None:
+        for name in ("raw", "product", "version"):
+            if not isinstance(getattr(self, name), str):
+                raise ValueError(f"prompt {name} must be a string")
+        if not isinstance(self.components, list) or any(
+            not isinstance(component, Component) for component in self.components
+        ):
+            raise ValueError("components must be a list of Component objects")
 
-    def stats(self) -> dict:
-        out = {}
-        for kind in VALID_COMPONENT_KINDS:
-            n = len(self.by_kind(kind))
-            if n:
-                out[kind] = n
-        return out
+    def by_kind(self, kind: str) -> list[Component]:
+        return [component for component in self.components if component.kind == kind]
+
+    def stats(self) -> dict[str, int]:
+        return {kind: len(items) for kind in VALID_COMPONENT_KINDS if (items := self.by_kind(kind))}
 
     def to_dict(self) -> dict:
         return {
+            "schema_version": SCHEMA_VERSION,
+            "raw": self.raw,
             "product": self.product,
             "version": self.version,
             "stats": self.stats(),
-            "components": [c.to_dict() for c in self.components],
+            "components": [component.to_dict() for component in self.components],
         }
 
     def save(self, path: str | Path) -> None:
-        Path(path).write_text(
-            json.dumps(self.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
+        atomic_write(path, json.dumps(self.to_dict(), indent=2, ensure_ascii=False) + "\n")
+
+    @classmethod
+    def from_dict(cls, data: dict) -> PromptSpec:
+        if not isinstance(data, dict):
+            raise ValueError("prompt spec must be a JSON object")
+        schema_version = data.get("schema_version", SCHEMA_VERSION)
+        if type(schema_version) is not int or schema_version != SCHEMA_VERSION:
+            raise ValueError(f"unsupported prompt schema version: {schema_version!r}")
+        if not isinstance(data.get("components"), list):
+            raise ValueError("prompt spec components must be a list")
+        # Initial-release files had no raw field or schema_version.
+        return cls(
+            raw=data.get("raw", ""),
+            product=data.get("product", ""),
+            version=data.get("version", ""),
+            components=[Component.from_dict(item) for item in data["components"]],
         )
 
     @classmethod
-    def load(cls, path: str | Path) -> "PromptSpec":
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
-        spec = cls(raw="", product=data.get("product", ""),
-                   version=data.get("version", ""))
-        spec.components = [Component.from_dict(c) for c in data["components"]]
-        return spec
+    def load(cls, path: str | Path) -> PromptSpec:
+        return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8-sig")))

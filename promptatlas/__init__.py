@@ -10,14 +10,15 @@ Public API:
     export_eval_cases()          -- promptfoo-compatible eval export
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-from .schema import Component, PromptSpec
-from .parse import parse_prompt
 from .atlas import AtlasStore
 from .diff import diff_specs
-from .generate import generate_prompt
 from .eval_export import export_eval_cases
+from .generate import generate_prompt
+from .lint import Finding, lint_prompt, lint_spec
+from .parse import parse_prompt
+from .schema import Component, PromptSpec
 
 __all__ = [
     "__version__",
@@ -28,4 +29,7 @@ __all__ = [
     "diff_specs",
     "generate_prompt",
     "export_eval_cases",
+    "Finding",
+    "lint_prompt",
+    "lint_spec",
 ]

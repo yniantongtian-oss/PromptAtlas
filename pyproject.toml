@@ -1,23 +1,43 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77,<85"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "promptatlas"
-version = "0.1.0"
-description = "A structured, queryable atlas of AI system prompts: parse, diff, generate, and regression-test production system prompts."
+version = "0.2.0"
+description = "Offline tools to parse, lint, compare, and compose system prompts with traceable components."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "PromptAtlas contributors" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 keywords = ["system-prompt", "prompt-engineering", "llm", "promptfoo", "evals"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff>=0.14,<1", "build>=1.2,<2", "twine>=6,<7"]
+
+[project.urls]
+Homepage = "https://github.com/yniantongtian-oss/PromptAtlas"
+Issues = "https://github.com/yniantongtian-oss/PromptAtlas/issues"
+Documentation = "https://github.com/yniantongtian-oss/PromptAtlas/tree/main/docs"
 
 [project.scripts]
 promptatlas = "promptatlas.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["promptatlas*"]
+
+[tool.setuptools.package-data]
+promptatlas = ["data/*.jsonl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]

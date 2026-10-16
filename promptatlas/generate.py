@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from .atlas import AtlasStore
 
 TEMPLATE = """\
@@ -29,31 +31,48 @@ def _bullet(items):
     lines = []
     for c in items:
         first = c.content.splitlines()[0].strip()
-        rest = "\n".join(c.content.splitlines()[1:]).strip()
-        entry = f"- {first}" + (f"\n  {rest}" if rest else "")
+        rest = "\n".join("  " + line for line in c.content.splitlines()[1:])
+        entry = f"- {first}" + (f"\n{rest}" if rest else "")
         lines.append(entry)
     return "\n".join(lines) if lines else "- (none)"
 
 
-def generate_prompt(scenario: str, store: AtlasStore = None,
-                    max_per_kind: int = 5) -> str:
-    """Assemble a production-grade first-draft system prompt for `scenario`.
+def generate_prompt(scenario: str, store: AtlasStore | None = None, max_per_kind: int = 5) -> str:
+    """Assemble an editable draft for `scenario`; review it before deployment.
 
     Components are retrieved from the atlas by keyword overlap with the
     scenario text, ranked by tag relevance.
     """
-    store = store or AtlasStore()
-    GENERIC = {"agent", "assistant", "bot", "ai", "online", "the", "for",
-               "and", "with", "that", "your"}
-    keywords = {w.strip(".,;:()\"'").lower() for w in scenario.split()
-                if len(w) > 2 and w.lower() not in GENERIC}
+    if not isinstance(scenario, str) or not scenario.strip():
+        raise ValueError("scenario must be a non-empty string")
+    if type(max_per_kind) is not int or max_per_kind < 1:
+        raise ValueError("max_per_kind must be a positive integer")
+    store = AtlasStore() if store is None else store
+    GENERIC = {
+        "agent",
+        "assistant",
+        "bot",
+        "ai",
+        "online",
+        "the",
+        "for",
+        "and",
+        "with",
+        "that",
+        "your",
+    }
+    keywords = {
+        w for w in re.findall(r"[a-z0-9]+", scenario.casefold()) if len(w) > 2 and w not in GENERIC
+    }
 
     def relevant(kind):
         cands = store.search(kind=kind)
         scored = []
         for c in cands:
-            tag_hits = sum(1 for k in keywords if any(k in t.lower() for t in c.tags))
-            text_hits = sum(1 for k in keywords if k in c.content.lower())
+            tag_tokens = set(re.findall(r"[a-z0-9]+", " ".join(c.tags).casefold()))
+            text_tokens = set(re.findall(r"[a-z0-9]+", c.content.casefold()))
+            tag_hits = len(keywords & tag_tokens)
+            text_hits = len(keywords & text_tokens)
             score = 3 * tag_hits + text_hits
             if "universal" in (t.lower() for t in c.tags):
                 score += 1  # universal components always apply
