@@ -34,7 +34,7 @@ promptatlas diff before.json after.json
 | --- | --- | --- |
 | PA001 | error | Empty prompt |
 | PA002 | warning | No explicit role or mission found |
-| PA003 | warning | Same-kind component repeated verbatim, ignoring whitespace |
+| PA003 | warning | Same-kind component repeated; prose whitespace is normalized, code stays literal |
 | PA004 | error | Opposite Always/Never directives with identical remaining words |
 | PA005 | warning | Unresolved `{{variable}}`, `${variable}`, TODO, or FIXME in a directive |
 | PA006 | error | Unclosed fenced code block |
@@ -48,9 +48,11 @@ Diff groups are disjoint. Exact matches consume duplicate occurrences first.
 Remaining same-kind candidates with lexical similarity of at least 0.6 are paired
 in descending score order; source order resolves ties. Case is significant,
 prose whitespace is normalized, and reordered exact matches are flagged separately.
-Whitespace inside tools, examples, and fenced code remains significant.
+Whitespace inside inline code, tools, examples, and fenced code remains significant.
+Opposite-rule checks also preserve case inside inline code identifiers.
 The similarity score measures ordered exact matches. All content changes,
 including near-identical edits and case changes, remain observable.
+See [performance boundaries](PERFORMANCE.md) for repeated and large inputs.
 
 Saved initial-release specs without `raw` or `schema_version` remain readable.
 Source locations and raw-text lint checks cannot be reconstructed when absent.

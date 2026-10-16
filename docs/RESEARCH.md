@@ -81,3 +81,18 @@ manually labeled regression cases. Multiline inline spans, list-container
 semantics, indented code, and general prose understanding require separate work.
 The [corpus report](PARSING.md) makes that scope explicit instead of presenting
 development fixtures as independent accuracy evidence.
+
+## Scaling without changing review meaning
+
+The [Python SequenceMatcher documentation](https://docs.python.org/3/library/difflib.html#sequence-matcher-objects)
+describes cached second-sequence indexes and upper bounds for lexical similarity.
+PromptAtlas uses both to avoid unnecessary candidate comparisons while retaining
+its 0.6 threshold and deterministic pairing order. Disabling the automatic junk
+heuristic remains necessary for repeated prompt components to stay observable.
+
+An identical normalized component sequence has a known score of 1 and bypasses
+the ordered matcher. Source-line offsets are indexed once. These improvements
+target observed repeated-input costs without substituting a new diff metric.
+The standard matcher can still take quadratic time on edited repetitive inputs;
+the [benchmark](PERFORMANCE.md) reports synthetic workload timings, not a general
+complexity or production-speed guarantee.

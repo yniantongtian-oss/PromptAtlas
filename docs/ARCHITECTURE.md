@@ -9,6 +9,7 @@ network request.
 | `schema.py` | Validate components and versioned, lossless prompt specs |
 | `parse.py` | Scan ordered source spans; preserve code, examples, and tool blocks |
 | `_markdown.py` | Share fence and inline-code boundaries without rewriting text |
+| `_text.py` | Normalize prose for comparisons while preserving code literals |
 | `lint.py` | Return stable rule codes and explainable structural findings |
 | `load.py` | Share lossless text and validated-spec loading across workflows |
 | `project.py` | Validate file contracts and aggregate complete per-file checks |
@@ -37,6 +38,11 @@ lines. See [parsing evidence and boundaries](PARSING.md) for the supported subse
 Diffing first matches exact normalized kind/content pairs one occurrence at a
 time. Remaining edits are paired only within the same kind. Added, removed, and
 changed groups do not overlap. Reordering is distinct from a content edit.
+Exact duplicate queues consume occurrences in constant time. Identical normalized
+sequences have similarity 1 without quadratic sequence matching. Changed-pair
+candidates retain the same threshold and source-order tie breaking, using cached
+indexes and safe similarity upper bounds. Edited repetitive sequences can still
+require quadratic work; see [performance evidence](PERFORMANCE.md).
 
 Bundled examples live under `promptatlas/data/` and are read through
 `importlib.resources`. They ship in wheels and source distributions. User writes

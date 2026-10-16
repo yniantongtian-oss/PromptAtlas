@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.2
+
+### Fixed
+
+- Preserve inline-code whitespace in diffs and duplicate checks, and preserve
+  literal case/whitespace when detecting opposite directives.
+- Report CR, CRLF, LF, and other parser-recognized line boundaries consistently.
+
+### Changed
+
+- Use constant-time duplicate queues and bypass ordered sequence matching for
+  identical normalized inputs.
+- Reuse same-kind candidate indexes and reject only candidates whose similarity
+  upper bounds fall below the existing threshold.
+- Precompute source line offsets instead of rescanning each component prefix.
+- Add a reproducible synthetic benchmark with correctness checks and explicit
+  limits; edited repetitive sequences retain the existing comparison semantics.
+
 ## 0.3.1
 
 ### Fixed

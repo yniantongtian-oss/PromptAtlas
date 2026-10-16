@@ -85,5 +85,10 @@ output overwrite protection, stable fingerprints, and saved-spec line handling.
 JSON Schema documents are checked by an independent development validator.
 The test coverage floor is 90%.
 
+Performance checks are described in [PERFORMANCE.md](PERFORMANCE.md). They record
+samples and verify results without asserting machine-dependent timing thresholds.
+Large repeated-input, literal whitespace, lexical threshold, and line-location
+contracts are covered by ordinary behavioral regressions.
+
 A successful local run is not a substitute for a successful workflow on the
 pushed commit. Inspect the GitHub Actions run associated with the final commit.

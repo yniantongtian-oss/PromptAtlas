@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from dataclasses import asdict, dataclass
 
 from ._markdown import closes_fence, opening_fence
+from ._text import component_key, prose_key
 from .parse import parse_prompt
 from .schema import VALID_COMPONENT_KINDS, PromptSpec
 
@@ -37,9 +39,13 @@ def lint_spec(spec: PromptSpec, *, required_kinds: tuple[str, ...] = ()) -> list
         findings.append(Finding("PA002", "warning", "No explicit role or mission was found."))
     seen: dict[tuple[str, str], str] = {}
     directives: dict[str, tuple[str, str]] = {}
+    line_starts, offset = [0], 0
+    for source_line in spec.raw.splitlines(keepends=True):
+        offset += len(source_line)
+        line_starts.append(offset)
     for component in spec.components:
-        line = spec.raw.count("\n", 0, component.start) + 1 if component.start is not None else None
-        key = (component.kind, " ".join(component.content.split()))
+        line = bisect_right(line_starts, component.start) if component.start is not None else None
+        key = component_key(component)
         if key in seen:
             findings.append(
                 Finding(
@@ -51,7 +57,7 @@ def lint_spec(spec: PromptSpec, *, required_kinds: tuple[str, ...] = ()) -> list
             continue
         directive = re.match(r"^(Always|Never)\s+(.+?)[.!]?\s*$", component.content, re.I)
         if directive:
-            polarity, body = directive[1].casefold(), " ".join(directive[2].casefold().split())
+            polarity, body = directive[1].casefold(), prose_key(directive[2], casefold=True)
             previous = directives.get(body)
             if previous and previous[0] != polarity:
                 findings.append(

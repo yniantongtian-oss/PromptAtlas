@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
+from collections import deque
 from difflib import SequenceMatcher
 
-from .schema import Component, PromptSpec
-
-
-def _key(component: Component) -> tuple[str, str]:
-    # Case is meaningful for identifiers. Whitespace-only edits are ignored.
-    if component.kind in {"tool", "few_shot"} or component.content.startswith(("```", "~~~")):
-        return component.kind, component.content
-    return component.kind, " ".join(component.content.split())
+from ._text import component_key
+from .schema import PromptSpec
 
 
 def diff_specs(spec_a: PromptSpec, spec_b: PromptSpec) -> dict:
@@ -23,26 +18,36 @@ def diff_specs(spec_a: PromptSpec, spec_b: PromptSpec) -> dict:
     Reordering is reported separately even when content is otherwise equal.
     """
     a, b = spec_a.components, spec_b.components
-    a_keys, b_keys = [_key(item) for item in a], [_key(item) for item in b]
-    available: dict[tuple[str, str], list[int]] = {}
+    a_keys, b_keys = [component_key(item) for item in a], [component_key(item) for item in b]
+    has_changes = a_keys != b_keys
+    available: dict[tuple[str, str], deque[int]] = {}
     for j, key in enumerate(b_keys):
-        available.setdefault(key, []).append(j)
+        available.setdefault(key, deque()).append(j)
     matched_a, matched_b = set(), set()
     exact_pairs = []
     for i, key in enumerate(a_keys):
         if available.get(key):
-            j = available[key].pop(0)
+            j = available[key].popleft()
             matched_a.add(i)
             matched_b.add(j)
             exact_pairs.append((i, j))
     candidates = []
+    by_kind: dict[str, list[tuple[int, SequenceMatcher]]] = {}
+    for j, new in enumerate(b):
+        if j not in matched_b:
+            by_kind.setdefault(new.kind, []).append(
+                (j, SequenceMatcher(None, "", b_keys[j][1], autojunk=False))
+            )
     for i, old in enumerate(a):
         if i in matched_a:
             continue
-        for j, new in enumerate(b):
-            if j in matched_b or old.kind != new.kind:
+        for j, matcher in by_kind.get(old.kind, []):
+            matcher.set_seq1(a_keys[i][1])
+            # Upper bounds can reject impossible candidates without changing
+            # the lexical threshold, asymmetry, or deterministic tie breaking.
+            if matcher.real_quick_ratio() < 0.6 or matcher.quick_ratio() < 0.6:
                 continue
-            ratio = SequenceMatcher(None, a_keys[i][1], b_keys[j][1], autojunk=False).ratio()
+            ratio = matcher.ratio()
             if ratio >= 0.6:
                 candidates.append((-ratio, i, j))
     changed_pairs = []
@@ -57,9 +62,13 @@ def diff_specs(spec_a: PromptSpec, spec_b: PromptSpec) -> dict:
         "added": [item for j, item in enumerate(b) if j not in matched_b],
         "removed": [item for i, item in enumerate(a) if i not in matched_a],
         "changed": [(a[i], b[j]) for i, j in sorted(changed_pairs)],
-        "similarity": round(SequenceMatcher(None, a_keys, b_keys, autojunk=False).ratio(), 4),
+        "similarity": (
+            round(SequenceMatcher(None, a_keys, b_keys, autojunk=False).ratio(), 4)
+            if has_changes
+            else 1.0
+        ),
         "reordered": reordered,
-        "has_changes": a_keys != b_keys,
+        "has_changes": has_changes,
         "a_version": spec_a.version,
         "b_version": spec_b.version,
     }

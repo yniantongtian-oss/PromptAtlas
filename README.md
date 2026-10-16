@@ -159,7 +159,8 @@ downloadable artifact. Read the [project workflow](docs/PROJECTS.md) and
   Supported literal boundaries and the original manually labeled corpus are
   documented in [parsing evidence](docs/PARSING.md).
 - Diffs measure text and ordering. They cannot determine whether a model's behavior
-  improved; whitespace-only changes are ignored and component edits are paired
+  improved; prose whitespace is normalized while code literals stay significant.
+  Component edits are paired
   with a documented lexical threshold.
 - Lint detects specific structural issues. Passing lint does not establish safety,
   factual accuracy, or resistance to prompt injection.
@@ -184,6 +185,8 @@ python scripts/verify_distribution.py
 
 The distribution verifier uses the sole wheel in a clean `dist/` directory; pass
 an explicit wheel path if that directory contains multiple builds.
+The [performance workflow](docs/PERFORMANCE.md) includes reproducible synthetic
+timings and explains which large-input comparisons can still be expensive.
 
 CI checks supported Python versions on Linux, plus Windows and macOS, and installs
 the built wheel in a fresh environment outside the checkout. Changes are checked
