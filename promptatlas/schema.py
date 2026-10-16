@@ -6,7 +6,7 @@ import json
 import math
 import re
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 from ._io import atomic_write
@@ -58,8 +58,8 @@ class Component:
         if (
             isinstance(self.confidence, bool)
             or not isinstance(self.confidence, (int, float))
-            or not math.isfinite(self.confidence)
             or not 0 <= self.confidence <= 1
+            or not math.isfinite(self.confidence)
         ):
             raise ValueError("component confidence must be a finite number from 0 to 1")
         if self.start is not None or self.end is not None:
@@ -133,18 +133,51 @@ class PromptSpec:
     def from_dict(cls, data: dict) -> PromptSpec:
         if not isinstance(data, dict):
             raise ValueError("prompt spec must be a JSON object")
+        unknown = (
+            set(data) - {item.name for item in fields(cls)} - {"schema_version", "stats", "$schema"}
+        )
+        if unknown:
+            raise ValueError(f"unknown prompt spec fields: {', '.join(sorted(unknown))}")
+        if "$schema" in data and not isinstance(data["$schema"], str):
+            raise ValueError("$schema must be a string; schema URLs are never fetched")
         schema_version = data.get("schema_version", SCHEMA_VERSION)
         if type(schema_version) is not int or schema_version != SCHEMA_VERSION:
             raise ValueError(f"unsupported prompt schema version: {schema_version!r}")
         if not isinstance(data.get("components"), list):
             raise ValueError("prompt spec components must be a list")
         # Initial-release files had no raw field or schema_version.
-        return cls(
+        spec = cls(
             raw=data.get("raw", ""),
             product=data.get("product", ""),
             version=data.get("version", ""),
             components=[Component.from_dict(item) for item in data["components"]],
         )
+        seen = set()
+        previous_end = 0
+        for component in spec.components:
+            if component.id in seen:
+                raise ValueError(f"duplicate component id {component.id!r}")
+            seen.add(component.id)
+            if component.start is not None:
+                if component.start < previous_end:
+                    raise ValueError("component source spans are out of order or overlap")
+                if (
+                    component.end > len(spec.raw)
+                    or spec.raw[component.start : component.end] != component.content
+                ):
+                    raise ValueError(
+                        f"component {component.id!r} span does not match the original source"
+                    )
+                previous_end = component.end
+        if "stats" in data:
+            stats = data["stats"]
+            if (
+                not isinstance(stats, dict)
+                or any(type(value) is not int or value < 1 for value in stats.values())
+                or stats != spec.stats()
+            ):
+                raise ValueError("prompt stats do not match the serialized components")
+        return spec
 
     @classmethod
     def load(cls, path: str | Path) -> PromptSpec:
