@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 from ._io import resolve_path
+from ._json import loads
 from ._templates import variable_names
 from .lint import Finding, lint_spec
 from .load import load_prompt, read_text
@@ -97,7 +97,7 @@ class ProjectConfig:
 def load_project(path: str | Path = "promptatlas.json") -> ProjectConfig:
     """Validate a JSON project file; listed files are relative to its directory."""
     path = resolve_path(path)
-    data = json.loads(read_text(path))
+    data = loads(read_text(path))
     if not isinstance(data, dict):
         raise ValueError("project configuration must be a JSON object")
     unknown = set(data) - {

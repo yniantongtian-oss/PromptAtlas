@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import re
 
+from ._json import loads
 from .atlas import AtlasStore
 
 TEMPLATE = """\
@@ -33,7 +33,7 @@ def _bullet(items):
     for c in items:
         if c.kind == "tool":
             try:
-                json.loads(c.content)
+                loads(c.content)
                 language = "json"
             except ValueError:
                 language = "text"

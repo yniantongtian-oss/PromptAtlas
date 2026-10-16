@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 
+from ._json import loads
 from ._markdown import fence_end, mask_inline_code, opening_fence
 from .schema import Component, PromptSpec
 
@@ -71,13 +72,23 @@ def _heading(line: str) -> tuple[bool, str | None]:
 
 
 def _is_tool(value: object) -> bool:
-    if isinstance(value, list):
-        return bool(value) and all(_is_tool(item) for item in value)
-    if not isinstance(value, dict):
-        return False
-    if value.get("type") == "function" or ("name" in value and "parameters" in value):
-        return True
-    return isinstance(value.get("tools"), list) and _is_tool(value["tools"])
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, list):
+            if not item:
+                return False
+            pending.extend(item)
+        elif isinstance(item, dict):
+            if item.get("type") == "function" or ("name" in item and "parameters" in item):
+                continue
+            tools = item.get("tools")
+            if not isinstance(tools, list) or not tools:
+                return False
+            pending.extend(tools)
+        else:
+            return False
+    return True
 
 
 def _classify(text: str, section: str | None) -> str:
@@ -150,7 +161,7 @@ def parse_prompt(raw: str, product: str = "", version: str = "") -> PromptSpec:
             j = min(j + 1, len(lines))
             kind = "context"
             try:
-                if _is_tool(json.loads("".join(lines[i + 1 : body_end]))):
+                if _is_tool(loads("".join(lines[i + 1 : body_end]))):
                     kind = "tool"
             except (ValueError, TypeError):
                 pass

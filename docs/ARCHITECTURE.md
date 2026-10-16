@@ -21,6 +21,7 @@ network request.
 | `generate.py` | Rank components by keyword/tag overlap and compose drafts |
 | `eval_export.py` | Export actual chat prompts and synthetic canary assertions |
 | `_io.py` | Write complete UTF-8 files before atomic replacement |
+| `_json.py` | Reject ambiguous object keys and contain JSON decoding failures |
 | `cli.py` | File/stdin handling, JSON output, errors, and CI exit codes |
 
 ## Design decisions

@@ -40,3 +40,27 @@ and removes repeated names. It never renders a template or fetches variable valu
 
 These invariants make exported reports reviewable. They do not establish that
 an annotated classification is correct or that an LLM will follow a prompt.
+
+## JSON input policy
+
+Runtime loaders for projects, saved specs, JSONL rows, and tool-content recognition
+share one decoder policy. Object member names must be unique after JSON string
+decoding: an escaped spelling cannot override the same literal key. Repeating an
+array value, such as an allowed variable name, remains valid and is handled by
+that field's normal contract. The same key may appear in separate objects.
+
+NaN/Infinity constants are rejected. JSON floating-point numbers must decode to
+finite Python floats; an exponent that overflows that range is an input error.
+Ordinary numbers and strings containing words such as `NaN` remain supported.
+These checks happen before field/schema validation and cannot be recovered by a
+generic validator after a permissive decoder has discarded duplicate names.
+
+Decoder recursion failures become `ValueError` input diagnostics. Project reports
+continue checking other files, and the CLI retains exit code 2 for invalid input.
+A fenced block that cannot be decoded or identified as a tool stays unchanged as
+opaque context. Tool recognition uses an iterative worklist within the decoder's
+supported depth. Neither step executes code or raises the interpreter's limits.
+
+This policy does not impose a file-size limit, bound all CPU/memory consumption,
+or sandbox JSON processing. Python's existing integer and nesting limits remain
+in effect. Review unusually large external files before loading them.

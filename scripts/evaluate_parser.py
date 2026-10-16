@@ -13,6 +13,7 @@ from pathlib import Path
 
 from promptatlas import PromptSpec, __version__, parse_prompt
 from promptatlas._io import atomic_write, resolve_path
+from promptatlas._json import loads
 from promptatlas.lint import lint_spec
 from promptatlas.schema import VALID_COMPONENT_KINDS
 
@@ -20,7 +21,7 @@ DEFAULT_CASES = Path(__file__).resolve().parents[1] / "tests/fixtures/parser_cas
 
 
 def evaluate(path: Path) -> dict:
-    corpus = json.loads(path.read_text(encoding="utf-8-sig"))
+    corpus = loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(corpus, dict) or type(corpus.get("schema_version")) is not int:
         raise ValueError("corpus must be an object with integer schema_version 1")
     if corpus["schema_version"] != 1:

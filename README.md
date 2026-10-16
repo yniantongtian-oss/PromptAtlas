@@ -158,6 +158,10 @@ options. Unknown names and TODO markers still warn. Try the complete
 [template project](examples/template-project/promptatlas.json) and read the
 [policy contract](docs/PROJECTS.md#intentional-template-variables).
 
+JSON inputs reject duplicate object names and non-finite numbers before field
+validation. Decoder-depth failures are reported as input errors, while fenced
+data stays intact. See the [JSON input policy](docs/SCHEMAS.md#json-input-policy).
+
 ## Scope and limitations
 
 - Parsing is an English-oriented heuristic. The confidence field is a rule weight,

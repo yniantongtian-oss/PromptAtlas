@@ -97,5 +97,11 @@ samples and verify results without asserting machine-dependent timing thresholds
 Large repeated-input, literal whitespace, lexical threshold, and line-location
 contracts are covered by ordinary behavioral regressions.
 
+JSON input controls include escaped duplicate policy keys, nested duplicates,
+non-finite numbers, failed JSONL reload/write preservation, deep tool recognition,
+and decoder-depth failures in the actual CLI. Invalid inputs cannot hide valid
+results for other project files. Installed-wheel checks repeat the ambiguous-key
+and deep-fence controls. See [JSON input policy](SCHEMAS.md#json-input-policy).
+
 A successful local run is not a substitute for a successful workflow on the
 pushed commit. Inspect the GitHub Actions run associated with the final commit.

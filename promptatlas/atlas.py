@@ -7,6 +7,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from ._io import atomic_write
+from ._json import loads
 from .schema import VALID_COMPONENT_KINDS, Component
 
 DEFAULT_ATLAS_PATH = Path(__file__).resolve().parent / "data" / "components.jsonl"
@@ -41,7 +42,7 @@ class AtlasStore:
             if not line.strip():
                 continue
             try:
-                component = Component.from_dict(json.loads(line))
+                component = Component.from_dict(loads(line))
                 if component.id in seen:
                     raise ValueError(f"duplicate component id {component.id!r}")
             except (ValueError, TypeError) as exc:

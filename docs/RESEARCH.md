@@ -109,3 +109,19 @@ strict checks active for other findings, and reports effective per-file policy.
 Unknown names and unsupported expressions remain warnings. This narrower contract
 does not claim to validate an entire template language or guarantee that a later
 renderer has received correct values.
+
+## JSON must not silently change a policy
+
+[RFC 8259 section 4](https://www.rfc-editor.org/rfc/rfc8259#section-4) recommends
+unique object names and describes inconsistent handling of duplicates. The
+[Python JSON interoperability documentation](https://docs.python.org/3/library/json.html#standard-compliance-and-interoperability)
+explains that its default decoder keeps the last duplicate and accepts non-finite
+number extensions. A project contract with repeated `strict` keys can therefore
+appear to require a gate while a later value disables it.
+
+PromptAtlas chooses explicit rejection of duplicate decoded names and non-finite
+numbers before validating fields. Decoder recursion failures become ordinary
+input diagnostics; undecodable fenced examples remain opaque text. This removes
+the reproduced ambiguous-policy and traceback cases without claiming a resource
+sandbox or changing the interpreter's limits. The complete
+[input contract](SCHEMAS.md#json-input-policy) records those boundaries.

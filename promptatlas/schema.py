@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 from ._io import atomic_write
+from ._json import loads
 
 VALID_COMPONENT_KINDS = (
     "role",
@@ -184,4 +185,4 @@ class PromptSpec:
 
     @classmethod
     def load(cls, path: str | Path) -> PromptSpec:
-        return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8-sig")))
+        return cls.from_dict(loads(Path(path).read_text(encoding="utf-8-sig")))

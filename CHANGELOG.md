@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.1
+
+### Fixed
+
+- Reject duplicate JSON object names before they can silently override project
+  policies, saved components, or atlas records, including escaped duplicate names.
+- Reject non-standard NaN/Infinity constants and floating-point overflow in JSON
+  input while preserving ordinary numeric values and literal strings.
+- Turn JSON decoder recursion failures into input errors; undecodable fenced
+  content remains opaque context and generator output keeps the original text.
+- Recognize decodable nested tool lists iteratively instead of recursing through
+  Python frames, and bound duplicate-key diagnostic length.
+
+### Changed
+
+- Share the JSON input policy across runtime loaders and the labeled-corpus runner.
+- Exercise ambiguous-policy and deep-input controls from installed wheels.
+
 ## 0.4.0
 
 ### Added

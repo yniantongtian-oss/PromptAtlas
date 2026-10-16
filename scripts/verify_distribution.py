@@ -118,6 +118,14 @@ print(json.dumps({'module': promptatlas.__file__, 'version': promptatlas.__versi
             run(str(cli), "check", "--config", str(contract), "--json", expected_exit=1)
         )
         assert not negative["ok"] and negative["files"][0]["findings"][0]["code"] == "PA005"
+        contract.write_text(
+            '{"strict":true,"strict":false,"prompts":["system.md"]}', encoding="utf-8"
+        )
+        assert not run(str(cli), "check", "--config", str(contract), "--json", expected_exit=2)
+        deep_code = "```json\n" + "[" * 4000 + "{}" + "]" * 4000 + "\n```"
+        deep = json.loads(run(str(cli), "parse", "-", "--json", input_text=deep_code))
+        assert deep["components"][0]["kind"] == "context"
+        assert deep["components"][0]["content"] == deep_code
         for name in ("component", "spec", "project"):
             schema = json.loads(run(str(cli), "schema", name))
             assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
@@ -129,7 +137,13 @@ print(json.dumps({'module': promptatlas.__file__, 'version': promptatlas.__versi
         assert json.loads(config["prompts"][0])[0]["role"] == "system"
         print(
             json.dumps(
-                {"wheel": wheel.name, "ok": True, "template_controls_verified": True, **report},
+                {
+                    "wheel": wheel.name,
+                    "ok": True,
+                    "template_controls_verified": True,
+                    "json_controls_verified": True,
+                    **report,
+                },
                 indent=2,
             )
         )
