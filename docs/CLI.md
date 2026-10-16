@@ -47,7 +47,8 @@ Default lint fails on errors. Strict mode also fails on warnings.
 Diff groups are disjoint. Exact matches consume duplicate occurrences first.
 Remaining same-kind candidates with lexical similarity of at least 0.6 are paired
 in descending score order; source order resolves ties. Case is significant,
-whitespace is normalized, and reordered exact matches are flagged separately.
+prose whitespace is normalized, and reordered exact matches are flagged separately.
+Whitespace inside tools, examples, and fenced code remains significant.
 The similarity score measures ordered exact matches. All content changes,
 including near-identical edits and case changes, remain observable.
 

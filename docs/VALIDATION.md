@@ -15,6 +15,10 @@ promptatlas validate --require-source --json
 python examples/quickstart.py
 ```
 
+Ruff is pinned to 0.17.1 so local and CI formatting agree, including Python code
+blocks in Markdown. Use the project's development environment rather than an
+unrelated global Ruff installation.
+
 The regression suite includes failures observed in the initial prototype:
 unstable IDs, lost original text, duplicate few-shot parsing, code misclassified
 as guardrails, collapsed duplicate diff entries, unreported case changes,

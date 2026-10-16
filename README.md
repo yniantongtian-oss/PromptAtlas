@@ -96,7 +96,9 @@ requested quality gate that fails, and **2** for invalid input or usage.
 from promptatlas import AtlasStore, PromptSpec, diff_specs, lint_prompt, parse_prompt
 
 before = parse_prompt("You are a reviewer.\nNever invent evidence.", version="v1")
-after = parse_prompt("You are a reviewer.\nNever invent evidence.\nAlways cite sources.", version="v2")
+after = parse_prompt(
+    "You are a reviewer.\nNever invent evidence.\nAlways cite sources.", version="v2"
+)
 
 assert diff_specs(before, after)["has_changes"]
 assert not lint_prompt(before.raw)
