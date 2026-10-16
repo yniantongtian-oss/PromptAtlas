@@ -11,7 +11,12 @@ import venv
 from pathlib import Path
 
 
-def verify(wheel: Path) -> None:
+def verify(wheel: Path | None) -> None:
+    if wheel is None:
+        candidates = sorted(Path("dist").glob("*.whl"))
+        if len(candidates) != 1:
+            raise ValueError("expected exactly one wheel in dist; pass an explicit wheel path")
+        wheel = candidates[0]
     wheel = wheel.resolve(strict=True)
     with tempfile.TemporaryDirectory(prefix="promptatlas wheel smoke ") as directory:
         root = Path(directory)
@@ -66,6 +71,26 @@ print(json.dumps({'module': promptatlas.__file__, 'version': promptatlas.__versi
         assert parsed["stats"] == {"role": 1}
         results = json.loads(run(str(cli), "search", "--kind", "guardrail", "--json"))
         assert results["total"] >= 2
+        project = root / "review project"
+        project.mkdir()
+        (project / "system.md").write_text(
+            "You are a reviewer.\nNever invent evidence.", encoding="utf-8"
+        )
+        contract = project / "promptatlas.json"
+        contract.write_text(
+            json.dumps(
+                {"strict": True, "require": ["role", "guardrail"], "prompts": ["system.md"]}
+            ),
+            encoding="utf-8",
+        )
+        checked = json.loads(run(str(cli), "check", "--config", str(contract), "--json"))
+        assert checked["ok"] and checked["summary"]["passed"] == 1
+        sarif = json.loads(run(str(cli), "check", "--config", str(contract), "--format", "sarif"))
+        assert sarif["version"] == "2.1.0"
+        assert sarif["runs"][0]["invocations"][0]["executionSuccessful"]
+        for name in ("component", "spec", "project"):
+            schema = json.loads(run(str(cli), "schema", name))
+            assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
         output = root / "eval with spaces.json"
         run(str(cli), "eval", "a support agent", "--out", str(output), "--provider", "echo")
         config = json.loads(output.read_text(encoding="utf-8"))
@@ -75,5 +100,7 @@ print(json.dumps({'module': promptatlas.__file__, 'version': promptatlas.__versi
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("wheel", type=Path)
+    parser.add_argument(
+        "wheel", type=Path, nargs="?", help="wheel path; defaults to the sole wheel in dist"
+    )
     verify(parser.parse_args().wheel)

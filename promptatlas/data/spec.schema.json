@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/yniantongtian-oss/PromptAtlas/main/promptatlas/data/spec.schema.json",
+  "title": "PromptAtlas saved prompt specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "components"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "raw": {
+      "type": "string"
+    },
+    "product": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "instruction": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tool": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "guardrail": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "output_rule": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stop_condition": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "few_shot": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "context": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "other": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    }
+  },
+  "$defs": {
+    "component": {
+      "title": "PromptAtlas component",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "content"
+      ],
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "role",
+            "instruction",
+            "tool",
+            "guardrail",
+            "output_rule",
+            "stop_condition",
+            "few_shot",
+            "context",
+            "other"
+          ]
+        },
+        "content": {
+          "type": "string",
+          "pattern": "\\S",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "\\S",
+          "minLength": 1
+        },
+        "product": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\S",
+            "minLength": 1
+          }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "start": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "end": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "start": {
+              "type": "null"
+            },
+            "end": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "type": "integer"
+            },
+            "end": {
+              "type": "integer"
+            }
+          }
+        }
+      ],
+      "$comment": "Cross-field start < end, source excerpts, ordering, ID uniqueness, and derived stats are additionally validated by PromptAtlas."
+    }
+  }
+}

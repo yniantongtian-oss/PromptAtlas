@@ -21,7 +21,7 @@ exercise the installed wheel:
 ```bash
 python -m build
 python -m twine check --strict dist/*
-python scripts/verify_distribution.py dist/promptatlas-0.2.0-py3-none-any.whl
+python scripts/verify_distribution.py
 ```
 
 ## Changes that help
@@ -32,6 +32,7 @@ python scripts/verify_distribution.py dist/promptatlas-0.2.0-py3-none-any.whl
 - Eval cases whose expected success and failure can both be demonstrated.
 - Original, attributed reference components that have a clear reuse basis.
 - Documentation that makes a complete workflow easier to run.
+- Project contracts and report integrations with verified source locations.
 
 The runtime stays standard-library-only. New dependencies or hosted services need
 a use case that justifies their installation, maintenance, and privacy costs.

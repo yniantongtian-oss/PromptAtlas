@@ -21,6 +21,6 @@ body:
     id: version
     attributes:
       label: PromptAtlas version, Python version, and operating system
-      placeholder: "promptatlas 0.2.0; Python 3.12; Windows 11"
+      placeholder: "promptatlas 0.3.0; Python 3.12; Windows 11"
     validations:
       required: true

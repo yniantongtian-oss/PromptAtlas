@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- Project contracts with shared/per-file required sections and warning policies.
+- Complete text, JSON, and SARIF reports across explicitly listed prompt files.
+- GitHub report publication with stable fingerprints and accurate file locations.
+- Packaged JSON Schema documents for components, saved specs, and project contracts.
+- Public project, shared loading, schema, and SARIF APIs.
+
+### Fixed
+
+- Reject mismatched source spans, duplicate IDs, unknown fields, and stale counts
+  when loading saved prompt specifications.
+- Convert huge invalid confidence values into clear validation errors.
+- Preserve original prompt line numbers without attaching them to JSON file lines.
+- Prevent report outputs from overwriting prompt inputs or project configuration.
+- Make the external runner's literal-text fixture consistent across line endings.
+
+### Changed
+
+- Raise the CI test coverage floor to 90%.
+- Exercise project workflows and packaged schemas in clean installed-wheel checks.
+- Discover a sole distribution wheel automatically, with explicit paths supported
+  when multiple builds exist.
+
 ## 0.2.0
 
 ### Added

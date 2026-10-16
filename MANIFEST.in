@@ -1,5 +1,5 @@
-include LICENSE README.md CONTRIBUTING.md CHANGELOG.md
-recursive-include promptatlas/data *.jsonl
+include LICENSE README.md CONTRIBUTING.md CHANGELOG.md promptatlas.json
+recursive-include promptatlas/data *.jsonl *.json
 recursive-include atlas *.md
 recursive-include docs *.md *.json
 recursive-include examples *.py *.md *.json *.cjs

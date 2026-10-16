@@ -95,12 +95,32 @@ Default assertions check literal canary disclosure and do not ban refusal phrase
 Review or extend assertions before treating these cases as a domain regression suite.
 Exporting does not execute tests. `sharing` is disabled in the exported config.
 
+## Project checks and schemas
+
+```bash
+promptatlas check --config promptatlas.json
+promptatlas check --json
+promptatlas check --format sarif --out test-results/project.sarif
+promptatlas schema project --out project.schema.json
+promptatlas schema spec
+promptatlas schema component
+```
+
+Project checks evaluate every explicitly listed file against shared and per-file
+requirements. An invalid input remains visible while other files are checked.
+Reports never overwrite the selected configuration or prompt inputs. See the
+[project guide](PROJECTS.md) for the complete manifest and SARIF contract.
+
+`schema` exports packaged JSON Schema 2020-12 documents. Metadata URLs are not
+fetched; runtime loading additionally validates source excerpts, ordered spans,
+unique IDs, and derived counts. See [schema invariants](SCHEMAS.md).
+
 ## Process contract
 
 | Exit | Meaning |
 | --- | --- |
 | 0 | Command completed or requested gate passed |
-| 1 | Lint/attribution gate failed, or `diff --fail-on-change` detected changes |
+| 1 | Lint/attribution/project gate failed, or `diff --fail-on-change` detected changes |
 | 2 | Invalid input, missing file, malformed JSON, or usage error |
 | 130 | Interrupted during command execution |
 

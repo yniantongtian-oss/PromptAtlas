@@ -8,6 +8,7 @@
 
 PromptAtlas is an offline Python library and CLI for extracting prompt components,
 checking structural mistakes, comparing versions, and composing editable drafts.
+Project contracts check complete prompt collections and export SARIF review reports.
 It also exports synthetic checks for [promptfoo](https://www.promptfoo.dev/).
 The core has **no runtime dependencies, network calls, model downloads, or API keys**.
 
@@ -57,6 +58,10 @@ promptatlas diff atlas/versions/example-agent_v1.md atlas/versions/example-agent
 promptatlas search --kind guardrail --tag coding-agent --json
 promptatlas validate --require-source
 
+# Check every file in the shipped project contract.
+promptatlas check --json
+promptatlas check --format sarif --out test-results/project.sarif
+
 # Compose an editable draft without calling a model.
 promptatlas generate "a customer support agent for an online store" --out draft.md
 
@@ -85,8 +90,10 @@ that provider and incur charges. Choose another provider with `--provider`.
 | `generate` | Deterministic keyword and tag retrieval; drafts remain editable and require review |
 | `eval` | Actual system/user chat messages, a synthetic disclosure canary, and a non-empty-response check |
 | `validate` | Validate every JSONL record, unique IDs, and optional source attribution |
+| `check` | Check a complete prompt project with shared/per-file contracts; export text, JSON, or SARIF |
+| `schema` | Export packaged JSON Schema documents for components, saved specs, and project contracts |
 
-`parse`, `lint`, `diff`, `search`, `add`, and `validate` support `--json`.
+`parse`, `lint`, `diff`, `search`, `add`, `validate`, and `check` support `--json`.
 Text inputs accept `-` for stdin. Exit codes are **0** for success, **1** for a
 requested quality gate that fails, and **2** for invalid input or usage.
 
@@ -119,6 +126,32 @@ promptatlas validate --atlas my-atlas.jsonl --require-source
 The bundled atlas is read-only. Custom stores use atomic file replacement and
 support one writer at a time. See the [CLI reference](docs/CLI.md) for details.
 
+## Check a complete project
+
+Commit a `promptatlas.json` contract beside your prompt files. Shared requirements
+apply to every listed file; individual entries can add required sections or
+choose a warning policy. Paths are resolved from the configuration directory.
+
+```json
+{
+  "schema_version": 1,
+  "strict": true,
+  "require": ["role", "guardrail"],
+  "prompts": ["prompts/reviewer.md", "prompts/support.md"]
+}
+```
+
+```bash
+promptatlas check --config promptatlas.json --json
+promptatlas schema project --out project.schema.json
+```
+
+Reports cover all listed files, preserve input errors, and cannot overwrite
+prompt inputs. SARIF output includes real source locations and stable finding
+fingerprints. The repository's CI publishes its report to GitHub and retains a
+downloadable artifact. Read the [project workflow](docs/PROJECTS.md) and
+[schema contract](docs/SCHEMAS.md) for integration details.
+
 ## Scope and limitations
 
 - Parsing is an English-oriented heuristic. The confidence field is a rule weight,
@@ -143,8 +176,11 @@ python -m pytest --cov=promptatlas --cov-report=term-missing
 python examples/quickstart.py
 python -m build
 python -m twine check --strict dist/*
-python scripts/verify_distribution.py dist/promptatlas-0.2.0-py3-none-any.whl
+python scripts/verify_distribution.py
 ```
+
+The distribution verifier uses the sole wheel in a clean `dist/` directory; pass
+an explicit wheel path if that directory contains multiple builds.
 
 CI checks supported Python versions on Linux, plus Windows and macOS, and installs
 the built wheel in a fresh environment outside the checkout. Changes are checked

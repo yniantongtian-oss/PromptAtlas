@@ -10,15 +10,19 @@ Public API:
     export_eval_cases()          -- promptfoo-compatible eval export
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .atlas import AtlasStore
 from .diff import diff_specs
 from .eval_export import export_eval_cases
 from .generate import generate_prompt
 from .lint import Finding, lint_prompt, lint_spec
+from .load import load_prompt
 from .parse import parse_prompt
+from .project import ProjectConfig, ProjectReport, PromptContract, check_project, load_project
+from .report import sarif_report
 from .schema import Component, PromptSpec
+from .schemas import get_schema
 
 __all__ = [
     "__version__",
@@ -32,4 +36,12 @@ __all__ = [
     "Finding",
     "lint_prompt",
     "lint_spec",
+    "load_prompt",
+    "load_project",
+    "check_project",
+    "ProjectReport",
+    "ProjectConfig",
+    "PromptContract",
+    "sarif_report",
+    "get_schema",
 ]

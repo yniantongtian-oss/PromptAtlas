@@ -86,6 +86,9 @@ class Component:
     def from_dict(cls, data: dict) -> Component:
         if not isinstance(data, dict):
             raise ValueError("component must be a JSON object")
+        data = dict(data)
+        if "$schema" in data and not isinstance(data.pop("$schema"), str):
+            raise ValueError("$schema must be a string; schema URLs are never fetched")
         try:
             return cls(**data)
         except TypeError as exc:

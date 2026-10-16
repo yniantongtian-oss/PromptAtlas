@@ -14,24 +14,24 @@ from .diff import diff_specs, diff_summary, diff_to_dict
 from .eval_export import DEFAULT_PROVIDER, export_eval_cases
 from .generate import generate_prompt
 from .lint import lint_spec
+from .load import load_prompt, read_text
 from .parse import parse_prompt
+from .project import ProjectReport, check_project
+from .report import sarif_report
 from .schema import VALID_COMPONENT_KINDS, Component, PromptSpec
+from .schemas import SCHEMA_NAMES, get_schema
 
 
 def _read(path: str) -> str:
     if path == "-":
         return sys.stdin.read().lstrip("\ufeff")
-    with Path(path).open(encoding="utf-8-sig", newline="") as stream:
-        return stream.read()
+    return read_text(path)
 
 
 def _spec(path: str, product: str = "", version: str = "") -> PromptSpec:
-    raw = _read(path)
-    if path != "-" and Path(path).suffix.casefold() == ".json":
-        return PromptSpec.from_dict(json.loads(raw))
-    return parse_prompt(
-        raw, product=product, version=version or (Path(path).name if path != "-" else "stdin")
-    )
+    if path == "-":
+        return parse_prompt(_read(path), product=product, version=version or "stdin")
+    return load_prompt(path, product=product, version=version)
 
 
 def _json(value: object) -> None:
@@ -181,6 +181,59 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _project_text(report: ProjectReport) -> str:
+    lines = []
+    for file in report.files:
+        if file.error is not None:
+            lines.append(f"{file.path}: input error: {file.error}")
+        for finding in file.findings:
+            location = f":{finding.line}" if finding.line is not None else ""
+            lines.append(
+                f"{file.path}{location}: {finding.severity} {finding.code}: {finding.message}"
+            )
+    summary = report.to_dict()["summary"]
+    lines.append(
+        f"Checked {summary['files']} prompts: {summary['passed']} passed, "
+        f"{summary['failed']} failed, {summary['invalid']} invalid; "
+        f"{summary['errors']} errors, {summary['warnings']} warnings."
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _cmd_check(args: argparse.Namespace) -> int:
+    report = check_project(args.config)
+    if args.format == "text":
+        text = _project_text(report)
+    else:
+        document = sarif_report(report) if args.format == "sarif" else report.to_dict()
+        text = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+    if args.out:
+        target = Path(args.out).resolve()
+        inputs = {
+            report.config.path,
+            *((report.config.root / file.path).resolve() for file in report.files),
+        }
+        if target in inputs:
+            raise ValueError(
+                "report output must differ from the project configuration and prompt inputs"
+            )
+        atomic_write(target, text)
+        print(f"Wrote {args.out}", file=sys.stderr)
+    else:
+        print(text, end="")
+    return report.exit_code
+
+
+def _cmd_schema(args: argparse.Namespace) -> int:
+    text = json.dumps(get_schema(args.name), indent=2, ensure_ascii=False) + "\n"
+    if args.out:
+        atomic_write(args.out, text)
+        print(f"Wrote {args.out}", file=sys.stderr)
+    else:
+        print(text, end="")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="promptatlas", description="Offline tools for structured system prompts."
@@ -266,6 +319,27 @@ def main(argv: list[str] | None = None) -> int:
     entry.add_argument("--require-source", action="store_true")
     atlas_option(entry)
     as_json(entry)
+
+    entry = command("check", "check every prompt in a project contract", _cmd_check)
+    entry.add_argument(
+        "--config",
+        default="promptatlas.json",
+        help="project JSON file; prompt paths are relative to it",
+    )
+    formats = entry.add_mutually_exclusive_group()
+    formats.add_argument("--format", choices=("text", "json", "sarif"), default="text")
+    formats.add_argument(
+        "--json",
+        dest="format",
+        action="store_const",
+        const="json",
+        help="emit a single JSON document",
+    )
+    entry.add_argument("--out", help="write the report atomically to a file")
+
+    entry = command("schema", "export an offline JSON Schema document", _cmd_schema)
+    entry.add_argument("name", choices=SCHEMA_NAMES)
+    entry.add_argument("--out")
 
     args = parser.parse_args(argv)
     try:

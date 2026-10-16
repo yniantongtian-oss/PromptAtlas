@@ -12,6 +12,7 @@ python -m ruff check .
 python -m ruff format --check .
 python -m pytest --cov=promptatlas --cov-report=term-missing
 promptatlas validate --require-source --json
+promptatlas check --json
 python examples/quickstart.py
 ```
 
@@ -35,13 +36,15 @@ and real module execution from a directory outside the checkout.
 ```bash
 python -m build
 python -m twine check --strict dist/*
-python scripts/verify_distribution.py dist/promptatlas-0.2.0-py3-none-any.whl
+python scripts/verify_distribution.py
 ```
 
 The default build creates an sdist and builds its wheel from that sdist. The
 verification script then creates another virtual environment outside the checkout,
 installs that wheel without runtime dependencies, and exercises public imports,
 the installed executable, reference data, parsing, search, and eval export.
+Project checks, SARIF export, and all three packaged schemas are also exercised
+from that installed wheel.
 The sdist must contain examples and test fixtures as well as package resources.
 
 ## External runner compatibility
@@ -65,7 +68,16 @@ CI runs lint and tests across supported Python versions on Linux and checks
 Windows/macOS behavior separately. It builds and inspects distributions, executes
 the installed wheel outside the source directory, and runs the pinned external
 runner controls. Workflow dependencies are pinned to reviewed commit SHAs, and
-workflow tokens use read-only repository permissions.
+workflow tokens use read-only repository permissions except for the dedicated
+SARIF upload job, which requests `security-events: write`. That job waits for
+GitHub to process the report before it succeeds. Pull requests retain report
+artifacts without publishing a new analysis.
+
+Project regressions cover complete multi-file results, strictness overrides,
+configuration-relative paths, malformed specs, missing inputs, symlink boundaries,
+output overwrite protection, stable fingerprints, and saved-spec line handling.
+JSON Schema documents are checked by an independent development validator.
+The test coverage floor is 90%.
 
 A successful local run is not a substitute for a successful workflow on the
 pushed commit. Inspect the GitHub Actions run associated with the final commit.

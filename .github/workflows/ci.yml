@@ -40,9 +40,11 @@ jobs:
           python -m ruff check .
           python -m ruff format --check .
       - name: Run behavioral regressions
-        run: python -m pytest --cov=promptatlas --cov-report=term-missing --cov-fail-under=85
+        run: python -m pytest --cov=promptatlas --cov-report=term-missing --cov-fail-under=90
       - name: Validate bundled data
         run: promptatlas validate --require-source --json
+      - name: Check project prompt contracts
+        run: promptatlas check --json
       - name: Run complete offline example
         run: python examples/quickstart.py
 
@@ -61,12 +63,41 @@ jobs:
       - name: Validate package metadata and README
         run: python -m twine check --strict dist/*
       - name: Exercise an installed wheel outside the checkout
-        run: python scripts/verify_distribution.py dist/promptatlas-0.2.0-py3-none-any.whl
+        run: python scripts/verify_distribution.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: distributions
           path: dist/
           if-no-files-found: error
+
+  project-report:
+    name: Verify and publish prompt review report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install .
+      - name: Export structural findings
+        run: promptatlas check --format sarif --out test-results/project.sarif
+      - name: Publish report to GitHub
+        if: always() && github.event_name != 'pull_request' && hashFiles('test-results/project.sarif') != ''
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4, resolved 2026-10-16
+        with:
+          sarif_file: test-results/project.sarif
+          category: promptatlas-project
+          wait-for-processing: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: prompt-review-report
+          path: test-results/project.sarif
+          if-no-files-found: warn
 
   promptfoo:
     name: Verify promptfoo positive and negative controls

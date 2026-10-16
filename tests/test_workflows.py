@@ -9,7 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from promptatlas import AtlasStore, Component, PromptSpec, diff_specs, generate_prompt, parse_prompt
+from promptatlas import (
+    AtlasStore,
+    Component,
+    PromptSpec,
+    diff_specs,
+    generate_prompt,
+    parse_prompt,
+)
 from promptatlas.cli import main
 from promptatlas.lint import lint_prompt
 

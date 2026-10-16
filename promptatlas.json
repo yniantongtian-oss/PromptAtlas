@@ -1,0 +1,10 @@
+{
+  "$schema": "./promptatlas/data/project.schema.json",
+  "schema_version": 1,
+  "strict": true,
+  "require": ["role", "guardrail", "output_rule", "stop_condition"],
+  "prompts": [
+    "atlas/versions/example-agent_v1.md",
+    "atlas/versions/example-agent_v2.md"
+  ]
+}

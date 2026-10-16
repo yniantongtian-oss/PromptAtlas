@@ -36,7 +36,7 @@ def verify(package: Path, output: Path) -> None:
         "PROMPTFOO_FAILED_TEST_EXIT_CODE": "100",
     }
     source = output / "literal system prompt.md"
-    source.write_text(LITERAL_PROMPT, encoding="utf-8")
+    source.write_text(LITERAL_PROMPT, encoding="utf-8", newline="\n")
     negative_path = output / "echo-config.json"
     exported = subprocess.run(
         [

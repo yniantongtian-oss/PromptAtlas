@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "promptatlas"
-version = "0.2.0"
+version = "0.3.0"
 description = "Offline tools to parse, lint, compare, and compose system prompts with traceable components."
 readme = "README.md"
 license = "MIT"
@@ -15,7 +15,7 @@ dependencies = []
 keywords = ["system-prompt", "prompt-engineering", "llm", "promptfoo", "evals"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff==0.17.1", "build>=1.2,<2", "twine>=6,<7"]
+dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff==0.17.1", "build>=1.2,<2", "twine>=6,<7", "jsonschema>=4.23,<5"]
 
 [project.urls]
 Homepage = "https://github.com/yniantongtian-oss/PromptAtlas"
@@ -29,7 +29,7 @@ promptatlas = "promptatlas.cli:main"
 include = ["promptatlas*"]
 
 [tool.setuptools.package-data]
-promptatlas = ["data/*.jsonl"]
+promptatlas = ["data/*.jsonl", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -9,6 +9,10 @@ network request.
 | `schema.py` | Validate components and versioned, lossless prompt specs |
 | `parse.py` | Scan ordered source spans; preserve code, examples, and tool blocks |
 | `lint.py` | Return stable rule codes and explainable structural findings |
+| `load.py` | Share lossless text and validated-spec loading across workflows |
+| `project.py` | Validate file contracts and aggregate complete per-file checks |
+| `report.py` | Export SARIF with accurate locations and stable fingerprints |
+| `schemas.py` | Export packaged, self-contained JSON Schema documents |
 | `diff.py` | Compare ordered components without collapsing duplicates |
 | `atlas.py` | Read packaged examples and explicit custom JSONL stores |
 | `generate.py` | Rank components by keyword/tag overlap and compose drafts |
@@ -37,6 +41,19 @@ are not supported.
 The package never runs tools described in a prompt, imports prompt-specified
 code, reads credentials, or calls an LLM. A generated draft is plain text. An
 evaluation file becomes executable only when the user chooses an external runner.
+
+## Project and interchange boundaries
+
+Project contracts resolve paths relative to the configuration and bind every
+input explicitly. Invalid files are recorded alongside valid results. Shared
+requirements combine with per-file settings; gate outcomes remain distinct from
+execution errors. SARIF uses text-file locations directly and avoids mapping raw
+prompt lines onto the unrelated physical lines of a saved JSON document.
+
+JSON Schema documents describe structural interchange. Runtime checks additionally
+validate source excerpts, ordering, duplicate IDs, counts, and resolved paths.
+These relationships stay in the core instead of depending on a remote schema
+service or a runtime validator library.
 
 ## Extension boundaries
 

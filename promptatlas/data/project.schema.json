@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/yniantongtian-oss/PromptAtlas/main/promptatlas/data/project.schema.json",
+  "title": "PromptAtlas project contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "prompts"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "strict": {
+      "type": "boolean"
+    },
+    "require": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "role",
+          "instruction",
+          "tool",
+          "guardrail",
+          "output_rule",
+          "stop_condition",
+          "few_shot",
+          "context",
+          "other"
+        ]
+      }
+    },
+    "prompts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "allOf": [
+              {
+                "pattern": "\\S"
+              },
+              {
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^<>:\"\\\\|?*]+$"
+              },
+              {
+                "not": {
+                  "enum": [
+                    ".",
+                    "./"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "allOf": [
+                  {
+                    "pattern": "\\S"
+                  },
+                  {
+                    "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^<>:\"\\\\|?*]+$"
+                  },
+                  {
+                    "not": {
+                      "enum": [
+                        ".",
+                        "./"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "require": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "role",
+                    "instruction",
+                    "tool",
+                    "guardrail",
+                    "output_rule",
+                    "stop_condition",
+                    "few_shot",
+                    "context",
+                    "other"
+                  ]
+                }
+              },
+              "strict": {
+                "type": "boolean"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$comment": "Paths are relative to this configuration. Runtime checks also reject duplicate resolved files and symlink escapes."
+}
