@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 from ._io import resolve_path
+from ._templates import variable_names
 from .lint import Finding, lint_spec
 from .load import load_prompt, read_text
 from .schema import VALID_COMPONENT_KINDS
@@ -54,6 +55,7 @@ class PromptContract:
     path: str
     required_kinds: tuple[str, ...]
     strict: bool
+    allowed_variables: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", _path(self.path))
@@ -62,6 +64,9 @@ class PromptContract:
         required = _required(list(self.required_kinds), "required_kinds")
         object.__setattr__(self, "required_kinds", required)
         _strict(self.strict, "contract strict")
+        if not isinstance(self.allowed_variables, tuple):
+            raise ValueError("allowed_variables must be a tuple of variable names")
+        object.__setattr__(self, "allowed_variables", variable_names(self.allowed_variables))
 
 
 @dataclass(frozen=True)
@@ -95,7 +100,14 @@ def load_project(path: str | Path = "promptatlas.json") -> ProjectConfig:
     data = json.loads(read_text(path))
     if not isinstance(data, dict):
         raise ValueError("project configuration must be a JSON object")
-    unknown = set(data) - {"$schema", "schema_version", "strict", "require", "prompts"}
+    unknown = set(data) - {
+        "$schema",
+        "schema_version",
+        "strict",
+        "require",
+        "allow_variables",
+        "prompts",
+    }
     if unknown:
         raise ValueError(f"unknown project fields: {', '.join(sorted(unknown))}")
     if "$schema" in data and not isinstance(data["$schema"], str):
@@ -105,6 +117,7 @@ def load_project(path: str | Path = "promptatlas.json") -> ProjectConfig:
         raise ValueError(f"unsupported project schema version: {version!r}")
     strict = _strict(data.get("strict", False), "project strict")
     required = _required(data.get("require", []), "project require")
+    allowed = variable_names(data.get("allow_variables", []), "project allow_variables")
     entries = data.get("prompts")
     if not isinstance(entries, list) or not entries:
         raise ValueError("project prompts must be a non-empty list")
@@ -115,7 +128,7 @@ def load_project(path: str | Path = "promptatlas.json") -> ProjectConfig:
             entry = {"path": entry}
         if not isinstance(entry, dict):
             raise ValueError(f"prompt entry {index} must be a path string or object")
-        unknown = set(entry) - {"path", "require", "strict"}
+        unknown = set(entry) - {"path", "require", "strict", "allow_variables"}
         if unknown:
             raise ValueError(
                 f"unknown fields in prompt entry {index}: {', '.join(sorted(unknown))}"
@@ -134,6 +147,16 @@ def load_project(path: str | Path = "promptatlas.json") -> ProjectConfig:
                     )
                 ),
                 strict=_strict(entry.get("strict", strict), f"prompt {index} strict"),
+                allowed_variables=tuple(
+                    dict.fromkeys(
+                        (
+                            *allowed,
+                            *variable_names(
+                                entry.get("allow_variables", []), f"prompt {index} allow_variables"
+                            ),
+                        )
+                    )
+                ),
             )
         )
     return ProjectConfig(path=path, prompts=tuple(prompts))
@@ -147,6 +170,7 @@ class FileCheck:
     stats: dict[str, int] = field(default_factory=dict)
     findings: list[Finding] = field(default_factory=list)
     error: str | None = None
+    allowed_variables: tuple[str, ...] = ()
 
     @property
     def failed(self) -> bool:
@@ -160,6 +184,7 @@ class FileCheck:
             "ok": not self.failed,
             "strict": self.strict,
             "source_format": self.source_format,
+            "allowed_variables": list(self.allowed_variables),
             "stats": self.stats,
             "findings": [item.to_dict() for item in self.findings],
             "error": self.error,
@@ -209,11 +234,16 @@ def check_project(path: str | Path | ProjectConfig = "promptatlas.json") -> Proj
             contract.path,
             contract.strict,
             "spec" if Path(contract.path).suffix.casefold() == ".json" else "text",
+            allowed_variables=contract.allowed_variables,
         )
         try:
             spec = load_prompt(_resolve(config.root, contract.path))
             item.stats = spec.stats()
-            item.findings = lint_spec(spec, required_kinds=contract.required_kinds)
+            item.findings = lint_spec(
+                spec,
+                required_kinds=contract.required_kinds,
+                allowed_variables=contract.allowed_variables,
+            )
         except OSError as exc:
             item.error = exc.strerror or str(exc)
         except ValueError as exc:

@@ -13,6 +13,7 @@ python -m ruff format --check .
 python -m pytest --cov=promptatlas --cov-report=term-missing
 promptatlas validate --require-source --json
 promptatlas check --json
+promptatlas check --config examples/template-project/promptatlas.json --json
 python examples/quickstart.py
 python scripts/evaluate_parser.py --out test-results/parser-corpus.json
 ```
@@ -84,6 +85,12 @@ configuration-relative paths, malformed specs, missing inputs, symlink boundarie
 output overwrite protection, stable fingerprints, and saved-spec line handling.
 JSON Schema documents are checked by an independent development validator.
 The test coverage floor is 90%.
+
+Template-policy regressions verify additive scopes without cross-file leakage,
+case-sensitive names, both placeholder styles, unknown and complex expressions,
+real TODOs around literal code, saved specs, CLI exit codes, and independent
+schema/runtime rejection of invalid declarations. The installed-wheel verifier
+must accept declared placeholders and reject an undeclared-name negative control.
 
 Performance checks are described in [PERFORMANCE.md](PERFORMANCE.md). They record
 samples and verify results without asserting machine-dependent timing thresholds.

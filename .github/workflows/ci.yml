@@ -45,6 +45,8 @@ jobs:
         run: promptatlas validate --require-source --json
       - name: Check project prompt contracts
         run: promptatlas check --json
+      - name: Check the strict template project
+        run: promptatlas check --config examples/template-project/promptatlas.json --json
       - name: Run complete offline example
         run: python examples/quickstart.py
       - name: Evaluate manually labeled structural fixtures

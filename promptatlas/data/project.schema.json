@@ -18,6 +18,9 @@
     "strict": {
       "type": "boolean"
     },
+    "allow_variables": {
+      "$ref": "#/$defs/variableNames"
+    },
     "require": {
       "type": "array",
       "items": {
@@ -104,6 +107,9 @@
               },
               "strict": {
                 "type": "boolean"
+              },
+              "allow_variables": {
+                "$ref": "#/$defs/variableNames"
               }
             }
           }
@@ -111,5 +117,15 @@
       }
     }
   },
-  "$comment": "Paths are relative to this configuration. Runtime checks also reject duplicate resolved files and symlink escapes."
+  "$defs": {
+    "variableNames": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+        "not": {"pattern": "[\\r\\n]"}
+      }
+    }
+  },
+  "$comment": "Paths are relative to this configuration. Runtime checks also reject duplicate resolved files and symlink escapes. Variable declarations are additive and do not render templates."
 }

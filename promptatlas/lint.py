@@ -7,6 +7,7 @@ from bisect import bisect_right
 from dataclasses import asdict, dataclass
 
 from ._markdown import closes_fence, opening_fence
+from ._templates import has_unresolved_template, variable_names
 from ._text import component_key, prose_key
 from .parse import parse_prompt
 from .schema import VALID_COMPONENT_KINDS, PromptSpec
@@ -24,7 +25,12 @@ class Finding:
         return asdict(self)
 
 
-def lint_spec(spec: PromptSpec, *, required_kinds: tuple[str, ...] = ()) -> list[Finding]:
+def lint_spec(
+    spec: PromptSpec,
+    *,
+    required_kinds: tuple[str, ...] = (),
+    allowed_variables: tuple[str, ...] = (),
+) -> list[Finding]:
     """Check empty prompts, missing sections, duplicates, and explicit conflicts.
 
     PA004 only recognizes opposite Always/Never directives with otherwise
@@ -32,6 +38,7 @@ def lint_spec(spec: PromptSpec, *, required_kinds: tuple[str, ...] = ()) -> list
     """
     if any(kind not in VALID_COMPONENT_KINDS for kind in required_kinds):
         raise ValueError("required_kinds contains an invalid component kind")
+    allowed = frozenset(variable_names(allowed_variables))
     findings = []
     if not spec.raw.strip() and not spec.components:
         return [Finding("PA001", "error", "The prompt is empty.", 1)]
@@ -70,12 +77,12 @@ def lint_spec(spec: PromptSpec, *, required_kinds: tuple[str, ...] = ()) -> list
                     )
                 )
             directives[body] = (polarity, component.id)
-        if re.search(r"\{\{[^{}]+\}\}|\$\{[^{}]+\}|\b(?:TODO|FIXME)\b", component.content):
+        if has_unresolved_template(component.content, allowed):
             findings.append(
                 Finding(
                     "PA005",
                     "warning",
-                    "A template variable or TODO remains; resolve it or confirm it is intentional.",
+                    "An undeclared template variable, unsupported expression, or TODO remains.",
                     line,
                     component.id,
                 )
@@ -100,6 +107,13 @@ def lint_spec(spec: PromptSpec, *, required_kinds: tuple[str, ...] = ()) -> list
     return findings
 
 
-def lint_prompt(raw: str, *, required_kinds: tuple[str, ...] = ()) -> list[Finding]:
+def lint_prompt(
+    raw: str,
+    *,
+    required_kinds: tuple[str, ...] = (),
+    allowed_variables: tuple[str, ...] = (),
+) -> list[Finding]:
     """Parse a prompt and return stable, explainable structural findings."""
-    return lint_spec(parse_prompt(raw), required_kinds=required_kinds)
+    return lint_spec(
+        parse_prompt(raw), required_kinds=required_kinds, allowed_variables=allowed_variables
+    )

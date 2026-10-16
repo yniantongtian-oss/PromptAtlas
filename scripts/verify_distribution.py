@@ -28,7 +28,7 @@ def verify(wheel: Path | None) -> None:
         env = {**os.environ, "PYTHONUTF8": "1", "PIP_DISABLE_PIP_VERSION_CHECK": "1"}
         env.pop("PYTHONPATH", None)
 
-        def run(*command: str, input_text: str | None = None) -> str:
+        def run(*command: str, input_text: str | None = None, expected_exit: int = 0) -> str:
             completed = subprocess.run(
                 list(command),
                 cwd=root,
@@ -39,9 +39,10 @@ def verify(wheel: Path | None) -> None:
                 capture_output=True,
                 check=False,
             )
-            if completed.returncode:
+            if completed.returncode != expected_exit:
                 raise RuntimeError(
-                    f"Command failed: {command}\n{completed.stdout}\n{completed.stderr}"
+                    f"Command returned {completed.returncode}, expected {expected_exit}: "
+                    f"{command}\n{completed.stdout}\n{completed.stderr}"
                 )
             return completed.stdout
 
@@ -53,6 +54,7 @@ def verify(wheel: Path | None) -> None:
                 "-c",
                 """
 import json
+from importlib.metadata import version
 import promptatlas
 from promptatlas import AtlasStore, generate_prompt, lint_prompt, parse_prompt
 assert len(AtlasStore()) >= 10
@@ -60,6 +62,7 @@ assert 'Never' in generate_prompt('a customer support agent')
 assert not lint_prompt('You are a reviewer.\\nNever invent evidence.')
 spec = parse_prompt('You are a reviewer.\\nNever invent evidence.')
 assert spec.to_dict() == parse_prompt(spec.raw).to_dict()
+assert version('promptatlas') == promptatlas.__version__
 print(json.dumps({'module': promptatlas.__file__, 'version': promptatlas.__version__, 'components': len(AtlasStore())}))
 """,
             )
@@ -88,14 +91,48 @@ print(json.dumps({'module': promptatlas.__file__, 'version': promptatlas.__versi
         sarif = json.loads(run(str(cli), "check", "--config", str(contract), "--format", "sarif"))
         assert sarif["version"] == "2.1.0"
         assert sarif["runs"][0]["invocations"][0]["executionSuccessful"]
+        template = "You are a reviewer.\nUse {{input}} to verify results."
+        (project / "system.md").write_text(template, encoding="utf-8")
+        contract.write_text(
+            json.dumps({"strict": True, "allow_variables": ["input"], "prompts": ["system.md"]}),
+            encoding="utf-8",
+        )
+        checked = json.loads(run(str(cli), "check", "--config", str(contract), "--json"))
+        assert checked["ok"] and checked["files"][0]["allowed_variables"] == ["input"]
+        assert json.loads(
+            run(
+                str(cli),
+                "lint",
+                "-",
+                "--strict",
+                "--allow-variable",
+                "input",
+                "--json",
+                input_text=template,
+            )
+        )["ok"]
+        (project / "system.md").write_text(
+            template.replace("{{input}}", "{{undeclared}}"), encoding="utf-8"
+        )
+        negative = json.loads(
+            run(str(cli), "check", "--config", str(contract), "--json", expected_exit=1)
+        )
+        assert not negative["ok"] and negative["files"][0]["findings"][0]["code"] == "PA005"
         for name in ("component", "spec", "project"):
             schema = json.loads(run(str(cli), "schema", name))
             assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+            if name == "project":
+                assert "allow_variables" in schema["properties"]
         output = root / "eval with spaces.json"
         run(str(cli), "eval", "a support agent", "--out", str(output), "--provider", "echo")
         config = json.loads(output.read_text(encoding="utf-8"))
         assert json.loads(config["prompts"][0])[0]["role"] == "system"
-        print(json.dumps({"wheel": wheel.name, "ok": True, **report}, indent=2))
+        print(
+            json.dumps(
+                {"wheel": wheel.name, "ok": True, "template_controls_verified": True, **report},
+                indent=2,
+            )
+        )
 
 
 if __name__ == "__main__":

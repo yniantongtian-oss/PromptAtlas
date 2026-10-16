@@ -26,6 +26,7 @@ classification. It does not execute content or infer model behavior.
 
 ```bash
 promptatlas lint system.md --strict --require role --require guardrail --json
+promptatlas lint template.md --strict --allow-variable input --allow-variable release.name --json
 promptatlas diff before.md after.md --json --fail-on-change
 promptatlas diff before.json after.json
 ```
@@ -36,12 +37,19 @@ promptatlas diff before.json after.json
 | PA002 | warning | No explicit role or mission found |
 | PA003 | warning | Same-kind component repeated; prose whitespace is normalized, code stays literal |
 | PA004 | error | Opposite Always/Never directives with identical remaining words |
-| PA005 | warning | Unresolved `{{variable}}`, `${variable}`, TODO, or FIXME in a directive |
+| PA005 | warning | Undeclared template name, unsupported expression/delimiter, or prose TODO/FIXME in a directive |
 | PA006 | error | Unclosed fenced code block |
 | PA007 | error | A component kind requested with `--require` is absent |
 
-Lint checks prompt structure only. Template variables may be intentional; decide
-whether strict mode is appropriate for a template or only its rendered output.
+Lint checks prompt structure only. Declare intentional runtime names with repeated
+`--allow-variable NAME` options. Names are case-sensitive ASCII identifiers,
+optionally separated by dots, such as `input` or `release.name`. Declarations allow
+exact `{{ name }}` and `${name}` placeholders without rendering or accessing values.
+They do not permit other variables, expressions, incomplete opening delimiters, or
+real TODO/FIXME markers. TODO labels in inline code are literal; placeholders in
+inline code still require declarations. Opaque context, examples, and tools retain
+their existing exemption from PA005. See [template contracts](PROJECTS.md#intentional-template-variables)
+for policy scope and limitations.
 Default lint fails on errors. Strict mode also fails on warnings.
 
 Diff groups are disjoint. Exact matches consume duplicate occurrences first.

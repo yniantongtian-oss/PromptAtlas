@@ -152,6 +152,12 @@ fingerprints. The repository's CI publishes its report to GitHub and retains a
 downloadable artifact. Read the [project workflow](docs/PROJECTS.md) and
 [schema contract](docs/SCHEMAS.md) for integration details.
 
+Templates can keep strict warning gates by declaring intentional names through
+`allow_variables` in project/file contracts or repeated `lint --allow-variable`
+options. Unknown names and TODO markers still warn. Try the complete
+[template project](examples/template-project/promptatlas.json) and read the
+[policy contract](docs/PROJECTS.md#intentional-template-variables).
+
 ## Scope and limitations
 
 - Parsing is an English-oriented heuristic. The confidence field is a rule weight,

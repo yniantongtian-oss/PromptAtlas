@@ -139,7 +139,11 @@ def _cmd_search(args: argparse.Namespace) -> int:
 
 def _cmd_lint(args: argparse.Namespace) -> int:
     spec = _spec(args.file)
-    findings = lint_spec(spec, required_kinds=tuple(args.require or []))
+    findings = lint_spec(
+        spec,
+        required_kinds=tuple(args.require or []),
+        allowed_variables=tuple(args.allow_variable or []),
+    )
     errors = sum(item.severity == "error" for item in findings)
     warnings = sum(item.severity == "warning" for item in findings)
     failed = bool(errors or (args.strict and warnings))
@@ -312,6 +316,11 @@ def main(argv: list[str] | None = None) -> int:
     entry.add_argument("file", help="prompt text or a saved JSON spec; - reads stdin")
     entry.add_argument("--strict", action="store_true", help="fail on warnings as well as errors")
     entry.add_argument("--require", action="append", choices=VALID_COMPONENT_KINDS)
+    entry.add_argument(
+        "--allow-variable",
+        action="append",
+        help="declare an intentional runtime variable; repeatable",
+    )
     as_json(entry)
 
     entry = command("validate", "validate JSONL schema, IDs, and attribution", _cmd_validate)

@@ -10,7 +10,7 @@ Public API:
     export_eval_cases()          -- promptfoo-compatible eval export
 """
 
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
 from .atlas import AtlasStore
 from .diff import diff_specs

@@ -10,6 +10,7 @@ network request.
 | `parse.py` | Scan ordered source spans; preserve code, examples, and tool blocks |
 | `_markdown.py` | Share fence and inline-code boundaries without rewriting text |
 | `_text.py` | Normalize prose for comparisons while preserving code literals |
+| `_templates.py` | Validate intentional names and detect unresolved directive templates |
 | `lint.py` | Return stable rule codes and explainable structural findings |
 | `load.py` | Share lossless text and validated-spec loading across workflows |
 | `project.py` | Validate file contracts and aggregate complete per-file checks |
@@ -66,6 +67,13 @@ JSON Schema documents describe structural interchange. Runtime checks additional
 validate source excerpts, ordering, duplicate IDs, counts, and resolved paths.
 These relationships stay in the core instead of depending on a remote schema
 service or a runtime validator library.
+
+Intentional template names are explicit contract data. Global declarations combine
+with per-file names, and the effective list appears in each JSON file result.
+PA005 retains unknown/unsupported placeholders and prose TODO markers without
+requiring a template engine or suppressing unrelated warnings. Templates are never
+rendered, and no variable values are read. Scope and identifier syntax are defined
+in the [template policy](PROJECTS.md#intentional-template-variables).
 
 ## Extension boundaries
 

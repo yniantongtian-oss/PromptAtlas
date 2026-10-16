@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "strict": true,
+  "require": ["role", "guardrail", "output_rule", "stop_condition"],
+  "allow_variables": ["release.name"],
+  "prompts": [
+    {
+      "path": "reviewer.md",
+      "allow_variables": ["artifact_id"]
+    }
+  ]
+}

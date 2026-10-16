@@ -57,6 +57,57 @@ paths, absolute paths, parent traversal, and symlink escapes are rejected. Use
 forward slashes for portable paths. A missing or unreadable prompt is an input
 error, not an empty successful scan. Other valid entries are still checked.
 
+## Intentional template variables
+
+Strict checks can inspect a template before values exist. Declare the exact names
+that are intentional instead of disabling warnings for the file:
+
+```json
+{
+  "strict": true,
+  "allow_variables": ["release.name"],
+  "prompts": [
+    {
+      "path": "reviewer.md",
+      "allow_variables": ["artifact_id"]
+    }
+  ]
+}
+```
+
+This permits `{{ release.name }}` and `${artifact_id}` in that file's directives.
+Per-file declarations add to project declarations, with duplicates removed. A
+file-specific name is not inherited by other files. To keep a name local, declare
+it only on the file that needs it. JSON reports include each file's effective
+`allowed_variables` list so the policy remains reviewable.
+
+Names follow `[A-Za-z_][A-Za-z0-9_]*`, with optional dot-separated segments of the
+same form. Matching is case-sensitive. Wildcards, expressions, array indexing, and
+implicit access to environment variables are not supported. `allow_variables`
+only acknowledges placeholders; it neither requires their presence nor supplies
+or validates values. Input templates and saved specs remain unchanged.
+
+Undeclared names, complex expressions, nested/empty placeholders, and incomplete
+opening delimiters still produce PA005. A TODO/FIXME token outside inline code
+still warns even when all variables are declared. A placeholder inside inline
+code still needs a declaration. Existing PA005 exemptions for context, examples,
+and tools remain in place: this is a directive check, not a complete template
+engine or a general detector of undeclared data throughout a document.
+
+The original runnable example includes required role, guardrail, output, and stop
+sections as well as intentional variables:
+
+```bash
+promptatlas check --config examples/template-project/promptatlas.json --json
+promptatlas lint examples/template-project/reviewer.md --strict --allow-variable release.name --allow-variable artifact_id --json
+```
+
+The Python equivalent is
+`lint_prompt(raw, allowed_variables=("release.name", "artifact_id"))`. The CLI and
+API use the same policy checks for text and saved specs. To validate complex
+engine-specific templates, render them in your own trusted workflow and inspect
+the result; PromptAtlas does not execute templates or check runtime values.
+
 ## Report and exit-code contract
 
 | Exit | Meaning |

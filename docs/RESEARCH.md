@@ -96,3 +96,16 @@ target observed repeated-input costs without substituting a new diff metric.
 The standard matcher can still take quadratic time on edited repetitive inputs;
 the [benchmark](PERFORMANCE.md) reports synthetic workload timings, not a general
 complexity or production-speed guarantee.
+
+## Templates need an explicit review policy
+
+The [promptfoo configuration guide](https://www.promptfoo.dev/docs/configuration/guide/)
+documents variable substitution and richer Nunjucks constructs. Those constructs
+belong to the external renderer. A local structural check should acknowledge
+intentional names without evaluating expressions or inspecting runtime values.
+
+PromptAtlas therefore accepts exact declared names in simple placeholders, keeps
+strict checks active for other findings, and reports effective per-file policy.
+Unknown names and unsupported expressions remain warnings. This narrower contract
+does not claim to validate an entire template language or guarantee that a later
+renderer has received correct values.

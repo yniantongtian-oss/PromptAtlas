@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+
+- Explicit runtime variable declarations through `lint --allow-variable`, Python
+  `allowed_variables`, and project/per-file `allow_variables` settings.
+- Effective variable policies in per-file JSON reports, schema validation, and a
+  complete strict template-project example.
+- Installed-wheel positive/negative checks for intentional and undeclared variables.
+
+### Fixed
+
+- Allow declared placeholders without disabling strict warning gates.
+- Keep undeclared names, unsupported expressions, incomplete delimiters, and
+  genuine TODO/FIXME markers visible under the same PA005 rule.
+- Treat inline-code TODO/FIXME labels as literals while still checking template
+  placeholders inside inline code. Template contents are never rendered.
+
 ## 0.3.2
 
 ### Fixed

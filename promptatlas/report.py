@@ -14,7 +14,12 @@ _RULES = (
     ("PA002", "MissingRole", "No explicit role or mission was found.", "warning"),
     ("PA003", "RepeatedComponent", "A component repeats an earlier rule.", "warning"),
     ("PA004", "OppositeDirectives", "Opposite Always/Never rules use identical wording.", "error"),
-    ("PA005", "UnresolvedTemplate", "A template variable or TODO remains.", "warning"),
+    (
+        "PA005",
+        "UnresolvedTemplate",
+        "An undeclared template variable, expression, or TODO remains.",
+        "warning",
+    ),
     ("PA006", "UnclosedFence", "A fenced code block is not closed.", "error"),
     ("PA007", "MissingRequiredKind", "A required component kind is missing.", "error"),
 )
