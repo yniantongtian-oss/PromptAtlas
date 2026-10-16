@@ -8,6 +8,7 @@ network request.
 | --- | --- |
 | `schema.py` | Validate components and versioned, lossless prompt specs |
 | `parse.py` | Scan ordered source spans; preserve code, examples, and tool blocks |
+| `_markdown.py` | Share fence and inline-code boundaries without rewriting text |
 | `lint.py` | Return stable rule codes and explainable structural findings |
 | `load.py` | Share lossless text and validated-spec loading across workflows |
 | `project.py` | Validate file contracts and aggregate complete per-file checks |
@@ -27,6 +28,11 @@ are opaque to sentence classification; text inside them cannot create an extra
 rule. Known Markdown headings supply section context. Stable hashes make equal
 inputs reproducible, while duplicate occurrence indices preserve repeated rules.
 Offsets identify content without rewriting the original prompt.
+
+Inline code on a single source line is hidden from sentence-boundary and keyword
+classification while remaining unchanged in component content. Fenced code within
+an example remains part of that example even when it contains headings or blank
+lines. See [parsing evidence and boundaries](PARSING.md) for the supported subset.
 
 Diffing first matches exact normalized kind/content pairs one occurrence at a
 time. Remaining edits are paired only within the same kind. Added, removed, and

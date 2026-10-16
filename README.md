@@ -156,6 +156,8 @@ downloadable artifact. Read the [project workflow](docs/PROJECTS.md) and
 
 - Parsing is an English-oriented heuristic. The confidence field is a rule weight,
   not a calibrated probability. Review ambiguous or domain-specific language.
+  Supported literal boundaries and the original manually labeled corpus are
+  documented in [parsing evidence](docs/PARSING.md).
 - Diffs measure text and ordering. They cannot determine whether a model's behavior
   improved; whitespace-only changes are ignored and component edits are paired
   with a documented lexical threshold.
@@ -174,6 +176,7 @@ python -m ruff check .
 python -m ruff format --check .
 python -m pytest --cov=promptatlas --cov-report=term-missing
 python examples/quickstart.py
+python scripts/evaluate_parser.py --out test-results/parser-corpus.json
 python -m build
 python -m twine check --strict dist/*
 python scripts/verify_distribution.py

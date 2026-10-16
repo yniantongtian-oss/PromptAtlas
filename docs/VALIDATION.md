@@ -14,6 +14,7 @@ python -m pytest --cov=promptatlas --cov-report=term-missing
 promptatlas validate --require-source --json
 promptatlas check --json
 python examples/quickstart.py
+python scripts/evaluate_parser.py --out test-results/parser-corpus.json
 ```
 
 Ruff is pinned to 0.17.1 so local and CI formatting agree, including Python code
@@ -30,6 +31,11 @@ Additional cases exercise CRLF and Unicode offsets, deterministic randomized
 roundtrips, atomic-write failure injection, malformed-row diagnostics, unchanged
 reload state on errors, source attribution, machine-readable CLI output, stdin,
 and real module execution from a directory outside the checkout.
+
+The [parser corpus](PARSING.md) contains original, manually labeled structural
+cases. Its runner compares full ordered kind/content pairs, findings, source spans,
+and saved-spec roundtrips. A deliberately wrong expected label must fail. These
+cases are visible during development and cannot establish held-out accuracy.
 
 ## Distribution checks
 

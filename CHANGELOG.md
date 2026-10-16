@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.1
+
+### Fixed
+
+- Keep same-line inline code intact during sentence splitting and classification.
+- Preserve fenced code and its internal headings/blank lines inside examples.
+- Share fence recognition between parsing and linting; inline triple-backtick
+  spans no longer trigger false unclosed-fence findings.
+
+### Added
+
+- A manually labeled, original structural corpus and an offline report runner
+  with mismatched-label negative controls and explicit evidence limitations.
+- Include the corpus in source distributions and run it across the CI matrix.
+
 ## 0.3.0
 
 ### Added

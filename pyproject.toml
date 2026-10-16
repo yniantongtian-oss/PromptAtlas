@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "promptatlas"
-version = "0.3.0"
+version = "0.3.1"
 description = "Offline tools to parse, lint, compare, and compose system prompts with traceable components."
 readme = "README.md"
 license = "MIT"

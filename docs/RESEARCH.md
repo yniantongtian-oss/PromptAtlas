@@ -65,3 +65,19 @@ Heuristic scores are not confidence calibration. Lexical diff similarity is not
 semantic equivalence. A passing fixture suite is not a live-model result. Public
 availability is not treated as a license to redistribute vendor prompts. No
 vendor prompt corpus or speculative adoption claim is bundled with this release.
+
+## Literal text boundaries
+
+The [CommonMark code-span rules](https://spec.commonmark.org/0.31.2/#code-spans)
+use equal-length backtick runs; the
+[fenced-block rules](https://spec.commonmark.org/0.31.2/#fenced-code-blocks)
+exclude backticks from backtick-fence info strings. This distinction matters:
+literal words inside inline code must not create extra prompt directives, and a
+code span at the start of a line must not become a false unclosed block.
+
+PromptAtlas uses these boundaries in a deliberately limited scanner, not a full
+CommonMark renderer. Same-line inline code and fenced examples have original,
+manually labeled regression cases. Multiline inline spans, list-container
+semantics, indented code, and general prose understanding require separate work.
+The [corpus report](PARSING.md) makes that scope explicit instead of presenting
+development fixtures as independent accuracy evidence.

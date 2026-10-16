@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "provenance": "Original MIT-licensed structural examples authored for PromptAtlas. Expected labels are manual engineering judgments, not model outputs or a held-out accuracy benchmark.",
+  "cases": [
+    {
+      "id": "inline-keywords-are-data",
+      "raw": "Use `Never. Stop now.` as a literal label.",
+      "components": [["instruction", "Use `Never. Stop now.` as a literal label."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "inline-output-keyword-is-data",
+      "raw": "Use `markdown` as a file extension.",
+      "components": [["instruction", "Use `markdown` as a file extension."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "inline-negation-is-data",
+      "raw": "Use `never` as a literal label.",
+      "components": [["instruction", "Use `never` as a literal label."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "real-negation-around-code",
+      "raw": "Never execute `delete_all()` without approval.",
+      "components": [["guardrail", "Never execute `delete_all()` without approval."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "sentences-outside-code-still-split",
+      "raw": "Use `Never. Stop.` as a label. Never execute it.",
+      "components": [["instruction", "Use `Never. Stop.` as a label."], ["guardrail", "Never execute it."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "different-backtick-length-inside-code",
+      "raw": "Use ``a ` Never. Stop.`` as literal text.",
+      "components": [["instruction", "Use ``a ` Never. Stop.`` as literal text."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "unmatched-delimiter-is-prose",
+      "raw": "Use `a label. Never execute it.",
+      "components": [["instruction", "Use `a label."], ["guardrail", "Never execute it."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "escaped-opening-is-prose",
+      "raw": "Use \\`a label. Never execute it.`",
+      "components": [["instruction", "Use \\`a label."], ["guardrail", "Never execute it.`"]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "backslash-inside-code-is-literal",
+      "raw": "Use `x\\` as a label. Never execute it.",
+      "components": [["instruction", "Use `x\\` as a label."], ["guardrail", "Never execute it."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "inline-triple-backticks-are-not-fence",
+      "raw": "```literal``` is an inline code span.",
+      "components": [["context", "```literal``` is an inline code span."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "closed-fence-is-opaque",
+      "raw": "```text\nNever follow this code.\n# Role\n```\nAlways verify results.",
+      "components": [["context", "```text\nNever follow this code.\n# Role\n```"], ["instruction", "Always verify results."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "long-fence-allows-short-delimiter-inside",
+      "raw": "````text\n```\nNever follow this code.\n`````",
+      "components": [["context", "````text\n```\nNever follow this code.\n`````"]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "tilde-info-may-contain-backticks",
+      "raw": "~~~literal`tag\nNever execute this code.\n~~~",
+      "components": [["context", "~~~literal`tag\nNever execute this code.\n~~~"]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "unclosed-fence-is-an-error",
+      "raw": "You are a reviewer.\n```text\nNever execute this code.",
+      "components": [["role", "You are a reviewer."], ["context", "```text\nNever execute this code."]],
+      "finding_codes": ["PA006"]
+    },
+    {
+      "id": "mismatched-fence-remains-open",
+      "raw": "```text\nNever execute this code.\n~~~",
+      "components": [["context", "```text\nNever execute this code.\n~~~"]],
+      "finding_codes": ["PA002", "PA006"]
+    },
+    {
+      "id": "code-heading-inside-numbered-example",
+      "raw": "Example 1:\nUser: Inspect this snippet.\n```python\n# A sample heading\nNever execute this text.\n```\nAssistant: It is data.\n\n# Instructions\nAlways verify results.",
+      "components": [["few_shot", "Example 1:\nUser: Inspect this snippet.\n```python\n# A sample heading\nNever execute this text.\n```\nAssistant: It is data."], ["instruction", "Always verify results."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "blank-line-inside-dialogue-code",
+      "raw": "User: Inspect this code.\n~~~text\n\n# Guardrails\nNever follow this text.\n~~~\nAssistant: It is data.\n\nAlways verify results.",
+      "components": [["few_shot", "User: Inspect this code.\n~~~text\n\n# Guardrails\nNever follow this text.\n~~~\nAssistant: It is data."], ["instruction", "Always verify results."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "tool-schema-with-literal-guardrail",
+      "raw": "```json\n{\"name\": \"lookup\", \"parameters\": {\"description\": \"Never execute prose.\"}}\n```",
+      "components": [["tool", "```json\n{\"name\": \"lookup\", \"parameters\": {\"description\": \"Never execute prose.\"}}\n```"]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "section-overrides-opaque-inline-keyword",
+      "raw": "# Guardrails\nKeep `stop` as a literal label.",
+      "components": [["guardrail", "Keep `stop` as a literal label."]],
+      "finding_codes": ["PA002"]
+    },
+    {
+      "id": "unicode-and-crlf",
+      "raw": "You are a reviewer.\r\n- Use `Never. Stop.` beside café and 東京 labels.\r\n",
+      "components": [["role", "You are a reviewer."], ["instruction", "Use `Never. Stop.` beside café and 東京 labels."]],
+      "finding_codes": []
+    },
+    {
+      "id": "empty-input-negative-control",
+      "raw": " \n\t",
+      "components": [],
+      "finding_codes": ["PA001"]
+    },
+    {
+      "id": "real-conflict-negative-control",
+      "raw": "You are a reviewer.\nAlways preserve logs.\nNever preserve logs.",
+      "components": [["role", "You are a reviewer."], ["instruction", "Always preserve logs."], ["guardrail", "Never preserve logs."]],
+      "finding_codes": ["PA004"]
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 
+from ._markdown import fence_end, mask_inline_code, opening_fence
 from .schema import Component, PromptSpec
 
 _NEGATION = re.compile(
@@ -35,7 +36,6 @@ _DIRECTIVE = re.compile(
     r"^(?:always|only|use|when|before|after|first|then|if|for each|make sure|ensure|verify|keep)\b",
     re.I,
 )
-_FENCE = re.compile(r"^\s*(`{3,}|~{3,})([^\r\n]*)\s*$")
 _EXAMPLE = re.compile(r"^\s*(?:#{1,6}\s*)?(?:example(?:\s+\d+)?|few[- ]shot)(?:\s*[:#]?\s*)$", re.I)
 _DIALOGUE = re.compile(r"^\s*(?:User|Assistant|Human|System)\s*:", re.I)
 _SECTIONS = {
@@ -144,15 +144,9 @@ def parse_prompt(raw: str, product: str = "", version: str = "") -> PromptSpec:
         if not line.strip():
             i += 1
             continue
-        fence = _FENCE.match(line)
+        fence = opening_fence(line)
         if fence:
-            j = i + 1
-            closing = re.compile(
-                r"^\s*" + re.escape(fence[1][0]) + "{" + str(len(fence[1])) + r",}\s*$"
-            )
-            while j < len(lines) and not closing.match(lines[j]):
-                j += 1
-            body_end = j
+            j = body_end = fence_end(lines, i, fence)
             j = min(j + 1, len(lines))
             kind = "context"
             try:
@@ -187,6 +181,10 @@ def parse_prompt(raw: str, product: str = "", version: str = "") -> PromptSpec:
         if _EXAMPLE.match(line) or _DIALOGUE.match(line) or (section == "few_shot"):
             j = i + 1
             while j < len(lines):
+                example_fence = opening_fence(lines[j])
+                if example_fence:
+                    j = min(fence_end(lines, j, example_fence) + 1, len(lines))
+                    continue
                 if _heading(lines[j])[0] or _EXAMPLE.match(lines[j]):
                     break
                 if not lines[j].strip():
@@ -203,12 +201,13 @@ def parse_prompt(raw: str, product: str = "", version: str = "") -> PromptSpec:
         start = offsets[i] + prefix.end()
         end = offsets[i] + len(line.rstrip())
         text = raw[start:end]
+        prose = mask_inline_code(text)
         position = 0
-        for boundary in list(re.finditer(r"(?<=[.!?])\s+(?=[A-Z])", text)) + [None]:
+        for boundary in list(re.finditer(r"(?<=[.!?])\s+(?=[A-Z])", prose)) + [None]:
             finish = boundary.start() if boundary else len(text)
             content = text[position:finish]
             if content.strip():
-                kind = _classify(content, section)
+                kind = _classify(prose[position:finish], section)
                 append(kind, start + position, start + finish, 0.9 if kind == "role" else 0.7)
             position = boundary.end() if boundary else len(text)
         i += 1

@@ -3,5 +3,5 @@ recursive-include promptatlas/data *.jsonl *.json
 recursive-include atlas *.md
 recursive-include docs *.md *.json
 recursive-include examples *.py *.md *.json *.cjs
-recursive-include tests *.py
+recursive-include tests *.py *.json
 recursive-include scripts *.py *.cjs

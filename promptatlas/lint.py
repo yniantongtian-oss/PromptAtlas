@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass
 
+from ._markdown import closes_fence, opening_fence
 from .parse import parse_prompt
 from .schema import VALID_COMPONENT_KINDS, PromptSpec
 
@@ -75,20 +76,15 @@ def lint_spec(spec: PromptSpec, *, required_kinds: tuple[str, ...] = ()) -> list
             )
     active_fence = None
     for number, line_text in enumerate(spec.raw.splitlines(), 1):
-        marker = re.match(r"^\s*(`{3,}|~{3,})(.*)$", line_text)
-        if not marker:
-            continue
         if active_fence is None:
-            active_fence = (marker[1][0], len(marker[1]), number)
-        elif (
-            marker[1][0] == active_fence[0]
-            and len(marker[1]) >= active_fence[1]
-            and not marker[2].strip()
-        ):
+            marker = opening_fence(line_text)
+            if marker:
+                active_fence = (marker, number)
+        elif closes_fence(line_text, active_fence[0]):
             active_fence = None
     if active_fence:
         findings.append(
-            Finding("PA006", "error", "A fenced code block is not closed.", active_fence[2])
+            Finding("PA006", "error", "A fenced code block is not closed.", active_fence[1])
         )
     for kind in dict.fromkeys(required_kinds):
         if not spec.by_kind(kind):
