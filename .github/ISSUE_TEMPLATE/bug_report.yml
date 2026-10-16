@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a reproducible parsing, CLI, storage, or export defect.
+title: "bug: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected and actual behavior. Remove private prompt content and credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: A short prompt, command, and observed output.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PromptAtlas version, Python version, and operating system
+      placeholder: "promptatlas 0.2.0; Python 3.12; Windows 11"
+    validations:
+      required: true

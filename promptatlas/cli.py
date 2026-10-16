@@ -21,7 +21,8 @@ from .schema import VALID_COMPONENT_KINDS, Component, PromptSpec
 def _read(path: str) -> str:
     if path == "-":
         return sys.stdin.read().lstrip("\ufeff")
-    return Path(path).read_text(encoding="utf-8-sig")
+    with Path(path).open(encoding="utf-8-sig", newline="") as stream:
+        return stream.read()
 
 
 def _spec(path: str, product: str = "", version: str = "") -> PromptSpec:

@@ -1,41 +1,52 @@
-# Contributing to PromptAtlas
+# Contributing
 
-Thanks for your interest in making PromptAtlas better.
+Contributions should solve a concrete problem and include a way to verify the
+result. Keep code, documentation, issue reports, and pull requests in English.
 
-## What we accept
+## Local setup
 
-1. **Curated system prompts** — but **only** material that is:
-   - published by the vendor itself (docs, blog posts, official repos), or
-   - explicitly licensed for reuse, or
-   - your own original prompts.
-   We do **not** accept or redistribute leaked/proprietary prompts. PRs
-   containing them will be closed.
-2. **Component annotations** — improve the heuristic parser or hand-annotate
-   components in `atlas/components.jsonl`.
-3. **Eval packs** — scenario-specific promptfoo test packs (injection probes,
-   format assertions, judge configs).
-4. **Bug fixes and features** — parser accuracy, new CLI commands, exporters
-   for other eval frameworks (DeepEval, Ragas).
-
-## Data format
-
-Each component is one JSON line in `atlas/components.jsonl`:
-
-```json
-{"id": "...", "kind": "guardrail|role|instruction|tool|output_rule|stop_condition|few_shot|context|other",
- "product": "...", "version": "...", "tags": ["..."], "content": "...",
- "confidence": 1.0, "source": "URL or provenance note"}
+```bash
+python -m venv .venv
+# Activate your environment, then:
+python -m pip install -e ".[dev]"
+python -m ruff check .
+python -m ruff format --check .
+python -m pytest --cov=promptatlas --cov-report=term-missing
+python examples/quickstart.py
 ```
 
-## Workflow
+Before changing package resources, metadata, or public imports, also build and
+exercise the installed wheel:
 
-1. Fork, branch, keep PRs small and focused.
-2. Run the tests: `python -m unittest discover tests -v`
-3. Run the quickstart: `python examples/quickstart.py`
-4. Describe what you added and its source/provenance in the PR.
+```bash
+python -m build
+python -m twine check --strict dist/*
+python scripts/verify_distribution.py dist/promptatlas-0.2.0-py3-none-any.whl
+```
 
-## Code style
+## Changes that help
 
-- Standard library first; new runtime dependencies require discussion.
-- Type hints and docstrings for public functions.
-- Deterministic behavior — no network calls in core modules.
+- Parser fixes with a minimal input and expected component kinds/source spans.
+- Diff regressions involving repeated rules, reordering, or meaningful text edits.
+- Lint checks with a stable explanation and a documented false-positive boundary.
+- Eval cases whose expected success and failure can both be demonstrated.
+- Original, attributed reference components that have a clear reuse basis.
+- Documentation that makes a complete workflow easier to run.
+
+The runtime stays standard-library-only. New dependencies or hosted services need
+a use case that justifies their installation, maintenance, and privacy costs.
+
+## Data contributions
+
+Read [data provenance](docs/DATA.md) before adding records. Include the exact
+source and reuse basis. Do not submit leaked prompts, credentials, private user
+content, or copyrighted material without permission. Passing schema validation
+does not replace human source review.
+
+## Pull requests
+
+Describe the problem, resulting behavior, and checks you ran. Include a failing
+regression when fixing a defect. Update affected examples and documentation.
+Separate deterministic fixture results from live-model measurements and name the
+provider/model/dataset when reporting the latter. Avoid speculative quality,
+security, performance, or adoption claims.

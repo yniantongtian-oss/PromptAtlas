@@ -1,0 +1,18 @@
+name: Feature request
+description: Describe a concrete workflow that PromptAtlas could improve.
+title: "feature: "
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Problem and workflow
+      description: What are you trying to do, and where does the current workflow fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Observable success
+      description: Give an example input and the result or command behavior you need.
+    validations:
+      required: true

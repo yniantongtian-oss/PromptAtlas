@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from promptatlas import AtlasStore, Component, PromptSpec, diff_specs, parse_prompt
+from promptatlas import AtlasStore, Component, PromptSpec, diff_specs, generate_prompt, parse_prompt
 from promptatlas.cli import main
 from promptatlas.lint import lint_prompt
 
@@ -130,6 +130,12 @@ def test_whitespace_only_changes_are_ignored():
     assert not diff_specs(a, b)["has_changes"]
 
 
+def test_literal_whitespace_in_tool_schemas_is_significant():
+    a = PromptSpec("", components=[Component("tool", '{"label":"a  b"}')])
+    b = PromptSpec("", components=[Component("tool", '{"label":"a b"}')])
+    assert diff_specs(a, b)["has_changes"]
+
+
 def test_empty_diffs_have_full_similarity():
     assert diff_specs(parse_prompt(""), parse_prompt(""))["similarity"] == 1
 
@@ -223,11 +229,30 @@ def test_lint_handles_longer_closing_fences():
     assert not lint_prompt('You are a reviewer.\n```python\nprint("hi")\n````')
 
 
+def test_generated_draft_keeps_tool_schema_intact_and_lints_cleanly():
+    draft = generate_prompt("a customer support agent")
+    spec = parse_prompt(draft)
+    assert len(spec.by_kind("tool")) == 1
+    assert "lookup_order" in spec.by_kind("tool")[0].content
+    assert not lint_prompt(draft)
+
+
 def test_parse_cli_emits_only_valid_json(tmp_path, capsys):
     path = tmp_path / "prompt with spaces.md"
     path.write_text("You are a reviewer.", encoding="utf-8-sig")
     assert main(["parse", str(path), "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["stats"] == {"role": 1}
+
+
+def test_cli_preserves_original_file_line_endings(tmp_path, capsys):
+    raw = b"You are a reviewer.\r\nNever invent facts.\r\n"
+    path = tmp_path / "crlf.md"
+    path.write_bytes(raw)
+    assert main(["parse", str(path), "--json"]) == 0
+    spec = json.loads(capsys.readouterr().out)
+    assert spec["raw"].encode("utf-8") == raw
+    for item in spec["components"]:
+        assert spec["raw"][item["start"] : item["end"]] == item["content"]
 
 
 def test_lint_cli_failure_is_machine_readable(tmp_path, capsys):

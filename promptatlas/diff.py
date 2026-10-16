@@ -9,6 +9,8 @@ from .schema import Component, PromptSpec
 
 def _key(component: Component) -> tuple[str, str]:
     # Case is meaningful for identifiers. Whitespace-only edits are ignored.
+    if component.kind in {"tool", "few_shot"} or component.content.startswith(("```", "~~~")):
+        return component.kind, component.content
     return component.kind, " ".join(component.content.split())
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 from .atlas import AtlasStore
@@ -30,6 +31,17 @@ TEMPLATE = """\
 def _bullet(items):
     lines = []
     for c in items:
+        if c.kind == "tool":
+            try:
+                json.loads(c.content)
+                language = "json"
+            except ValueError:
+                language = "text"
+            marker = "`" * max(
+                3, max((len(run) + 1 for run in re.findall(r"`+", c.content)), default=0)
+            )
+            lines.append(f"{marker}{language}\n{c.content}\n{marker}")
+            continue
         first = c.content.splitlines()[0].strip()
         rest = "\n".join("  " + line for line in c.content.splitlines()[1:])
         entry = f"- {first}" + (f"\n{rest}" if rest else "")

@@ -4,24 +4,90 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.9", "3.11", "3.13"]
+        os: [ubuntu-latest]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: windows-latest
+            python: "3.12"
+          - os: macos-latest
+            python: "3.12"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install
-        run: pip install -e .[dev]
-      - name: Run tests
-        run: python -m unittest discover tests -v
-      - name: CLI smoke test
+          python-version: ${{ matrix.python }}
+      - name: Install development tools
+        run: python -m pip install -e ".[dev]"
+      - name: Check code style
         run: |
-          promptatlas parse atlas/versions/example-agent_v1.md
-          promptatlas generate "a support agent" > /dev/null
-          promptatlas diff atlas/versions/example-agent_v1.md atlas/versions/example-agent_v2.md
+          python -m ruff check .
+          python -m ruff format --check .
+      - name: Run behavioral regressions
+        run: python -m pytest --cov=promptatlas --cov-report=term-missing --cov-fail-under=85
+      - name: Validate bundled data
+        run: promptatlas validate --require-source --json
+      - name: Run complete offline example
+        run: python examples/quickstart.py
+
+  distribution:
+    name: Build and install distributions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Build wheel from source distribution
+        run: python -m build
+      - name: Validate package metadata and README
+        run: python -m twine check --strict dist/*
+      - name: Exercise an installed wheel outside the checkout
+        run: python scripts/verify_distribution.py dist/promptatlas-0.2.0-py3-none-any.whl
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: distributions
+          path: dist/
+          if-no-files-found: error
+
+  promptfoo:
+    name: Verify promptfoo positive and negative controls
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.14.0"
+      - run: python -m pip install .
+      - name: Install pinned external runner
+        run: npm install --prefix "$RUNNER_TEMP/promptfoo-runner" --no-audit --no-fund promptfoo@0.124.1
+      - name: Verify fixtures without model calls
+        run: python scripts/verify_promptfoo.py --package "$RUNNER_TEMP/promptfoo-runner/node_modules/promptfoo"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: promptfoo-controls
+          path: test-results/promptfoo/
+          if-no-files-found: warn
