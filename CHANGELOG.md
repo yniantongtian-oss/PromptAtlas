@@ -10,6 +10,9 @@
   input while preserving ordinary numeric values and literal strings.
 - Turn JSON decoder recursion failures into input errors; undecodable fenced
   content remains opaque context and generator output keeps the original text.
+- Enforce a deterministic 900-level JSON nesting limit before decoding, so deep
+  inputs fail the same way on Windows, Linux, and macOS rather than depending on
+  the interpreter's stack-size-derived recursion limit.
 - Recognize decodable nested tool lists iteratively instead of recursing through
   Python frames, and bound duplicate-key diagnostic length.
 

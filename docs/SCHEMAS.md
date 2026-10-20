@@ -55,12 +55,15 @@ Ordinary numbers and strings containing words such as `NaN` remain supported.
 These checks happen before field/schema validation and cannot be recovered by a
 generic validator after a permissive decoder has discarded duplicate names.
 
-Decoder recursion failures become `ValueError` input diagnostics. Project reports
-continue checking other files, and the CLI retains exit code 2 for invalid input.
-A fenced block that cannot be decoded or identified as a tool stays unchanged as
-opaque context. Tool recognition uses an iterative worklist within the decoder's
-supported depth. Neither step executes code or raises the interpreter's limits.
+Inputs nested deeper than 900 levels are rejected before decoding, so the same
+input fails identically on every platform instead of depending on the
+interpreter's stack-size-derived recursion limit. Decoder recursion failures that
+still occur become `ValueError` input diagnostics. Project reports continue
+checking other files, and the CLI retains exit code 2 for invalid input. A fenced
+block that cannot be decoded or identified as a tool stays unchanged as opaque
+context. Tool recognition uses an iterative worklist within that supported depth.
+Neither step executes code or raises the interpreter's limits.
 
 This policy does not impose a file-size limit, bound all CPU/memory consumption,
-or sandbox JSON processing. Python's existing integer and nesting limits remain
-in effect. Review unusually large external files before loading them.
+or sandbox JSON processing. Python's existing integer limits remain in effect.
+Review unusually large external files before loading them.

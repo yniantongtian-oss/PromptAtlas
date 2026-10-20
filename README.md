@@ -159,8 +159,9 @@ options. Unknown names and TODO markers still warn. Try the complete
 [policy contract](docs/PROJECTS.md#intentional-template-variables).
 
 JSON inputs reject duplicate object names and non-finite numbers before field
-validation. Decoder-depth failures are reported as input errors, while fenced
-data stays intact. See the [JSON input policy](docs/SCHEMAS.md#json-input-policy).
+validation, and nesting deeper than 900 levels is rejected on every platform
+before decoding. Both are reported as input errors, while fenced data stays
+intact. See the [JSON input policy](docs/SCHEMAS.md#json-input-policy).
 
 ## Scope and limitations
 
