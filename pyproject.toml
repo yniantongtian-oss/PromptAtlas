@@ -15,7 +15,7 @@ dependencies = []
 keywords = ["system-prompt", "prompt-engineering", "llm", "promptfoo", "evals"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff==0.17.1", "build>=1.2,<2", "twine>=6,<7", "jsonschema>=4.23,<5"]
+dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff==0.17.1", "build>=1.2,<2", "twine>=6,<8", "jsonschema>=4.23,<5"]
 
 [project.urls]
 Homepage = "https://github.com/yniantongtian-oss/PromptAtlas"
