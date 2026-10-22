@@ -2,7 +2,8 @@
 
 PromptAtlas has a standard-library-only runtime. Every operation is local and
 inspectable. External evaluation is an exported configuration, not an implicit
-network request.
+network request. The optional MCP server is a separate entry point; the core
+does not import it.
 
 | Module | Responsibility |
 | --- | --- |
@@ -23,6 +24,7 @@ network request.
 | `_io.py` | Write complete UTF-8 files before atomic replacement |
 | `_json.py` | Reject ambiguous object keys and contain JSON decoding failures |
 | `cli.py` | File/stdin handling, JSON output, errors, and CI exit codes |
+| `mcp.py` | Optional stdio server; not imported by the core package |
 
 ## Design decisions
 
@@ -82,3 +84,7 @@ New parser rules need labeled examples and a regression case. New lint rules nee
 a stable code, an explanation, and a clear false-positive boundary. Exporters
 must include the prompt under evaluation and distinguish fixtures from live model
 results. Data additions require provenance and a clear reuse basis.
+
+The MCP server is a thin adapter over `parse_prompt`, `lint_prompt`,
+`diff_specs`, and `generate_prompt`. It is imported only when a host starts
+`promptatlas-mcp`. Installing the core package does not install the MCP SDK.
