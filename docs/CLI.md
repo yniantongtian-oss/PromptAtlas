@@ -137,3 +137,63 @@ unique IDs, and derived counts. See [schema invariants](SCHEMAS.md).
 `parse`, `lint`, `add`, and either diff text input accept `-` for stdin. Both diff
 inputs cannot simultaneously consume stdin. Input errors go to stderr without a
 traceback. Normal `--json` results are a single JSON document on stdout.
+
+## MCP server
+
+```bash
+python -m pip install "promptatlas[mcp]"
+promptatlas-mcp
+```
+
+`python -m promptatlas.mcp` starts the same server. The process speaks MCP over
+stdio and waits for a host; do not type at it. It uses the official MCP Python
+SDK. The core install does not include that SDK. If the extra is missing, the
+process exits with status 1 and installation instructions instead of a traceback.
+
+The server exposes the library functions as read-only tools. Arguments are
+prompt text. The server does not open prompt files, custom atlases, or the
+network.
+
+| Tool | Parameters | Result |
+| --- | --- | --- |
+| `parse` | `text`, optional `product` and `version` | `PromptSpec.to_dict()` |
+| `lint` | `text`, optional `strict`, `required_kinds`, `allowed_variables` | `ok`, `errors`, `warnings`, and `findings`. `strict` fails the gate on warnings. Findings are included either way |
+| `compare` | `before`, `after`, optional product and version labels for each side | `diff_specs` as JSON. Pass prompt text, or the `raw` field of a saved spec |
+| `compose` | `scenario`, optional `max_per_kind` (default 5) | Editable draft from the bundled atlas. No model is called |
+
+`compose` requires a non-empty scenario and a positive `max_per_kind`. Unknown
+lint kinds and invalid variable names are tool errors. A lint gate of `ok:
+false` is a successful tool call so the host can read the findings.
+
+Claude Code (`.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "promptatlas": {
+      "type": "stdio",
+      "command": "promptatlas-mcp"
+    }
+  }
+}
+```
+
+```bash
+claude mcp add --transport stdio promptatlas -- promptatlas-mcp
+```
+
+Cursor (`.cursor/mcp.json` or `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "promptatlas": {
+      "type": "stdio",
+      "command": "promptatlas-mcp"
+    }
+  }
+}
+```
+
+Use the full path to `promptatlas-mcp`, or `python` with args `["-m",
+"promptatlas.mcp"]`, when the console script is not on the host's `PATH`.

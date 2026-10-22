@@ -69,6 +69,44 @@ print(json.dumps({'module': promptatlas.__file__, 'version': promptatlas.__versi
         )
         assert environment in Path(report["module"]).parents, report
         assert report["version"] in run(str(cli), "--version")
+        mcp_cli = scripts / ("promptatlas-mcp.exe" if os.name == "nt" else "promptatlas-mcp")
+        if not mcp_cli.is_file():
+            raise AssertionError(f"missing MCP entry point: {mcp_cli}")
+        missing_sdk = subprocess.run(
+            [str(mcp_cli)],
+            cwd=root,
+            env=env,
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+        if missing_sdk.returncode != 1 or "promptatlas[mcp]" not in missing_sdk.stderr:
+            raise RuntimeError(
+                "promptatlas-mcp should explain the missing extra and exit 1:\n"
+                f"code={missing_sdk.returncode}\n{missing_sdk.stdout}\n{missing_sdk.stderr}"
+            )
+        if missing_sdk.stdout or "Traceback" in missing_sdk.stderr:
+            raise RuntimeError(
+                "promptatlas-mcp wrote a traceback or stdout without the extra:\n"
+                f"{missing_sdk.stdout}\n{missing_sdk.stderr}"
+            )
+        run(
+            str(python),
+            "-I",
+            "-c",
+            """
+import promptatlas.mcp as server
+try:
+    server.build_server()
+except ModuleNotFoundError as exc:
+    name = (exc.name or "").split(".", 1)[0]
+    assert name in {"mcp", "mcp_types"}, exc.name
+else:
+    raise SystemExit("expected the mcp extra to be absent from the dependency-free wheel")
+""",
+        )
         assert json.loads(run(str(cli), "validate", "--require-source", "--json"))["ok"]
         parsed = json.loads(run(str(cli), "parse", "-", "--json", input_text="You are a reviewer."))
         assert parsed["stats"] == {"role": 1}

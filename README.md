@@ -11,6 +11,8 @@ checking structural mistakes, comparing versions, and composing editable drafts.
 Project contracts check complete prompt collections and export SARIF review reports.
 It also exports synthetic checks for [promptfoo](https://www.promptfoo.dev/).
 The core has **no runtime dependencies, network calls, model downloads, or API keys**.
+An optional `mcp` extra serves the same parse, lint, compare, and compose
+operations to a local MCP host over stdio.
 
 Use it when a prompt change needs a readable review: which guardrail disappeared,
 whether a rule was repeated, or whether an example was mistaken for an instruction.
@@ -92,6 +94,7 @@ that provider and incur charges. Choose another provider with `--provider`.
 | `validate` | Validate every JSONL record, unique IDs, and optional source attribution |
 | `check` | Check a complete prompt project with shared/per-file contracts; export text, JSON, or SARIF |
 | `schema` | Export packaged JSON Schema documents for components, saved specs, and project contracts |
+| `promptatlas-mcp` | Optional stdio server for `parse`, `lint`, `compare`, and `compose` |
 
 `parse`, `lint`, `diff`, `search`, `add`, `validate`, and `check` support `--json`.
 Text inputs accept `-` for stdin. Exit codes are **0** for success, **1** for a
@@ -125,6 +128,61 @@ promptatlas validate --atlas my-atlas.jsonl --require-source
 
 The bundled atlas is read-only. Custom stores use atomic file replacement and
 support one writer at a time. See the [CLI reference](docs/CLI.md) for details.
+
+## MCP server
+
+The `mcp` extra is a thin adapter over the library. It uses the official MCP
+Python SDK and speaks stdio. The core package does not import it.
+
+```bash
+python -m pip install -e ".[mcp]"
+```
+
+`promptatlas-mcp` waits for a host. The tools take prompt text, not file paths,
+and do not read the network.
+
+| Tool | Calls | Result |
+| --- | --- | --- |
+| `parse` | `parse_prompt` | Saved spec with components, stats, and source spans |
+| `lint` | `lint_prompt` | Findings and an `ok` gate. A failed gate is still a normal tool result |
+| `compare` | `diff_specs` | Component diff of two prompt texts |
+| `compose` | `generate_prompt` | Editable draft from the bundled atlas. No model is called |
+
+Invalid arguments are tool errors and the process keeps running. Without the
+extra, `promptatlas-mcp` exits with status 1 and these install instructions.
+`python -m promptatlas.mcp` is the same server when the console script is not
+on `PATH`.
+
+Claude Code, in `.mcp.json` at the project root or the equivalent user config:
+
+```json
+{
+  "mcpServers": {
+    "promptatlas": {
+      "type": "stdio",
+      "command": "promptatlas-mcp"
+    }
+  }
+}
+```
+
+```bash
+claude mcp add --transport stdio promptatlas -- promptatlas-mcp
+```
+
+Cursor, in `.cursor/mcp.json` for one project or `~/.cursor/mcp.json` for every
+project:
+
+```json
+{
+  "mcpServers": {
+    "promptatlas": {
+      "type": "stdio",
+      "command": "promptatlas-mcp"
+    }
+  }
+}
+```
 
 ## Check a complete project
 
@@ -183,7 +241,7 @@ intact. See the [JSON input policy](docs/SCHEMAS.md#json-input-policy).
 ## Develop and verify
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,mcp]"
 python -m ruff check .
 python -m ruff format --check .
 python -m pytest --cov=promptatlas --cov-report=term-missing

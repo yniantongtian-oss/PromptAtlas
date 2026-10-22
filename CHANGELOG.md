@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+
+- Optional `mcp` extra and `promptatlas-mcp` stdio server. The `parse`, `lint`,
+  `compare`, and `compose` tools call the existing library functions. The core
+  package does not import the server and still has no runtime dependencies.
+
 ## 0.4.1
 
 ### Fixed

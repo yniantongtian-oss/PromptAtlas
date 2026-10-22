@@ -8,7 +8,7 @@ result. Keep code, documentation, issue reports, and pull requests in English.
 ```bash
 python -m venv .venv
 # Activate your environment, then:
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,mcp]"
 python -m ruff check .
 python -m ruff format --check .
 python -m pytest --cov=promptatlas --cov-report=term-missing
@@ -36,6 +36,9 @@ python scripts/verify_distribution.py
 
 The runtime stays standard-library-only. New dependencies or hosted services need
 a use case that justifies their installation, maintenance, and privacy costs.
+The MCP server is the optional exception: it depends on the official MCP SDK,
+is not imported by the core, and is covered by direct handler tests plus one
+stdio client round trip.
 
 ## Data contributions
 

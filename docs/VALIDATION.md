@@ -7,7 +7,7 @@ checkout with Python 3.10 or newer.
 ## Core and command-line checks
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,mcp]"
 python -m ruff check .
 python -m ruff format --check .
 python -m pytest --cov=promptatlas --cov-report=term-missing
@@ -72,9 +72,14 @@ disclosure assertions detect the target condition.
 ## CI acceptance
 
 CI runs lint and tests across supported Python versions on Linux and checks
-Windows/macOS behavior separately. It builds and inspects distributions, executes
+Windows/macOS behavior separately. The test job installs the optional `mcp`
+extra. Handler tests call `parse`, `lint`, `compare`, and `compose` directly,
+and one test launches the `promptatlas-mcp` entry point and calls it with the
+MCP Python SDK client over stdio. CI builds and inspects distributions, executes
 the installed wheel outside the source directory, and runs the pinned external
-runner controls. Workflow dependencies are pinned to reviewed commit SHAs, and
+runner controls. The wheel is installed without dependencies; the verifier then
+checks that `promptatlas-mcp` exits with installation instructions instead of
+importing the SDK. Workflow dependencies are pinned to reviewed commit SHAs, and
 workflow tokens use read-only repository permissions except for the dedicated
 SARIF upload job, which requests `security-events: write`. That job waits for
 GitHub to process the report before it succeeds. Pull requests retain report
