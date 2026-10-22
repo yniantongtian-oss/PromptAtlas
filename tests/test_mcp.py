@@ -3,6 +3,7 @@
 import asyncio
 import os
 import sys
+import sysconfig
 from pathlib import Path
 
 import pytest
@@ -185,13 +186,23 @@ def test_main_reraises_unrelated_import_errors(monkeypatch):
 
 
 def _entry_point() -> str:
-    # Do not resolve the interpreter. A venv executable is often a symlink to
-    # the system Python, while the console script stays beside the symlink.
+    """Return the installed promptatlas-mcp script for this interpreter.
+
+    A venv executable is often a symlink, so it must not be resolved. On
+    Windows, setup-python installs console scripts under Scripts/, not beside
+    python.exe.
+    """
     filename = "promptatlas-mcp.exe" if os.name == "nt" else "promptatlas-mcp"
-    path = Path(sys.executable).parent / filename
-    if not path.is_file():
-        pytest.fail(f"missing entry point beside the interpreter: {path}")
-    return str(path)
+    interpreter = Path(sys.executable).parent
+    candidates = [
+        Path(sysconfig.get_path("scripts")) / filename,
+        interpreter / filename,
+        interpreter / "Scripts" / filename,
+    ]
+    for path in candidates:
+        if path.is_file():
+            return str(path)
+    pytest.fail("missing promptatlas-mcp entry point; looked in " + ", ".join(map(str, candidates)))
 
 
 def test_stdio_round_trip():
